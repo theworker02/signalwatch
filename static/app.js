@@ -6,16 +6,16 @@ let plotPoints=[];
 async function get(url){let r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error(`${r.status} ${r.statusText}`);return r.json()}
 async function refresh(){
  try{
-  const [status,sources,events,samples,radio]=await Promise.all([
+  const [status,sources,events,samples,radio,observations]=await Promise.all([
   get('/api/status'),get('/api/sources'),get('/api/events?limit=125'+($('#filter').value?'&source='+encodeURIComponent($('#filter').value):'')),
-  get('/api/samples?source=NOAA%20GOES%20X-ray&limit=360'),get('/api/radio/files')]);
+  get('/api/samples?source=NOAA%20GOES%20X-ray&limit=360'),get('/api/radio/files'),get('/api/radio/observations?limit=16')]);
   const n=status.counts;
   $('#m-events').textContent=n.total.toLocaleString();
   $('#m-alerts').textContent=((n.by_severity.medium||0)+(n.by_severity.high||0)).toLocaleString();
   $('#m-radio').textContent=n.radio_files_processed;
   $('#m-feeds').textContent=sources.filter(s=>s.status==='ok').length+' / '+(sources.length||6);
   $('#runtime').textContent=status.polling?'Polling live sources…':status.last_cycle?'Last completed '+fdate(status.last_cycle):'Waiting for first data cycle';
-  renderEvents(events);renderSources(sources);renderSamples(samples);
+  renderEvents(events);renderSources(sources);renderSamples(samples);renderRadioObservations(observations,status,sources);
   const errors=radio.filter(r=>r.state==='error').length;
   $('#radio-status').textContent=radio.length?`${radio.filter(r=>r.state==='ok').length} processed · ${errors} errors · ${radio.reduce((n,r)=>n+r.candidate_count,0)} unverified candidate(s)`:'No local radio files have been processed.';
  }catch(e){$('#runtime').textContent='Cannot connect to local engine: '+e.message;}
@@ -37,6 +37,14 @@ $('#event-list').addEventListener('click',async ev=>{
 function renderSources(sources){
  if(!sources.length){$('#source-list').innerHTML='<div class="card empty">Sources have not started polling.</div>';return}
  $('#source-list').innerHTML=sources.map(s=>`<div class="card source-card"><div style="display:flex;justify-content:space-between;gap:10px"><div class="source-title">${safe(s.name)}</div><span class="status-pill ${safe(s.status)}">${safe(s.status).toUpperCase()}</span></div><div class="source-desc">${safe(s.url)}</div><div class="source-meta"><span>LAST SUCCESS: ${safe(s.last_success?fdate(s.last_success):'NONE')}</span><span>${s.records_seen} RECORDS</span></div>${s.last_error?`<div class="error-detail">${safe(s.last_error)}</div>`:''}</div>`).join('');
+}
+function renderRadioObservations(observations,status,sources){
+ const archive=sources.find(s=>s.name==='e-Callisto raw FITS');
+ const index=sources.find(s=>s.name==='e-Callisto upload index');
+ const downloading=status.callisto_autodownload?'Automatic FITS downloads ON':'Automatic FITS downloads OFF';
+ $('#callisto-status').textContent=`${downloading} · Station: ${status.callisto_station||'unconfigured'} · Archive status: ${archive?.status||'pending'} · Upload index: ${index?.status||'pending'}`;
+ if(!observations.length){$('#radio-observation-list').innerHTML='<div class="empty">No indexed station observations yet.</div>';return;}
+ $('#radio-observation-list').innerHTML=observations.map(o=>`<div class="radio-observation"><strong>${safe(o.station)}</strong><span>${safe(fdate(o.observed_at))}</span><small>${safe(o.filename)} · ${Math.round((o.size_bytes||0)/1024)} KB · metadata only</small></div>`).join('');
 }
 function renderSamples(samples){
  plotPoints=samples.filter(s=>Number.isFinite(s.metric) && s.metric>0);

@@ -63,6 +63,17 @@ class Store:
                     candidate_count INTEGER NOT NULL DEFAULT 0,
                     message TEXT
                 );
+                CREATE TABLE IF NOT EXISTS radio_observations (
+                    filename TEXT PRIMARY KEY,
+                    station TEXT NOT NULL,
+                    observed_at TEXT NOT NULL,
+                    listed_uploaded_at TEXT NOT NULL,
+                    discovered_at TEXT NOT NULL,
+                    size_bytes INTEGER NOT NULL,
+                    origin TEXT NOT NULL,
+                    category TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_radio_observations_time ON radio_observations(observed_at DESC);
             """)
 
     @contextmanager
@@ -109,6 +120,11 @@ class Store:
     def has_radio_file(self, signature):
         with self.connect() as con:
             return con.execute("SELECT 1 FROM radio_files WHERE signature=?", (signature,)).fetchone() is not None
+
+    def is_radio_file_processed(self, signature):
+        with self.connect() as con:
+            row=con.execute("SELECT state FROM radio_files WHERE signature=?",(signature,)).fetchone()
+            return row is not None and row['state']=='ok'
 
     def record_radio_file(self, signature, filename, state, count=0, message=''):
         with self.connect() as con:
@@ -158,6 +174,25 @@ class Store:
     def get_sources(self):
         with self.connect() as con:
             return [dict(r) for r in con.execute("SELECT * FROM sources ORDER BY name")]
+
+    def put_radio_observations(self, observations):
+        """Store upload-index arrivals as observations, never as anomalies."""
+        created=0
+        with self.connect() as con:
+            for record in observations:
+                cursor=con.execute("""INSERT OR IGNORE INTO radio_observations
+                    (filename,station,observed_at,listed_uploaded_at,discovered_at,size_bytes,origin,category)
+                    VALUES (?,?,?,?,?,?,?,?)""",
+                    (record['filename'],record['station'],record['observed_at'],
+                     record['listed_uploaded_at'],utcnow(),record['size_bytes'],
+                     record['origin'],record['category']))
+                created+=cursor.rowcount
+        return created
+
+    def get_radio_observations(self, limit=50):
+        with self.connect() as con:
+            return [dict(r) for r in con.execute("""SELECT * FROM radio_observations
+                ORDER BY observed_at DESC LIMIT ?""",(limit,))]
 
     def get_radio_files(self):
         with self.connect() as con:

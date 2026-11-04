@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from . import __version__
 from .db import Store, utcnow
 from .radio import scan_inbox
+from .callisto_feed import download_recent, ARCHIVE_BASE, prune_processed_cache
 from .sources import FEEDS, fetch_feed
 
 ROOT=Path(__file__).resolve().parent.parent
@@ -26,11 +27,14 @@ POLL_ENABLED=os.environ.get('SIGNALWATCH_BACKGROUND','1')=='1'
 LOCK=asyncio.Lock()
 RADIO_LOCK=asyncio.Lock()
 # Source-specific minimum retry periods. JPL explicitly requests non-repetitive, cached queries.
-SOURCE_INTERVALS={'NASA JPL':21600,'SatNOGS':600,'NOAA solar flares':600,'NOAA solar radio':600}
+SOURCE_INTERVALS={'NASA JPL':21600,'SatNOGS':600,'NOAA solar flares':600,'NOAA solar radio':600,'e-Callisto upload index':900,'e-Callisto raw FITS':900}
+CALLISTO_STATION=os.environ.get('SIGNALWATCH_CALLISTO_STATION','AUTO')
+CALLISTO_AUTO=os.environ.get('SIGNALWATCH_CALLISTO_DOWNLOAD','1')=='1'
 _next_due={}
 _failure_count={}
 state={'started_at':None,'last_cycle':None,'last_cycle_results':[],'polling':False,
-       'background':POLL_ENABLED,'interval_seconds':POLL_INTERVAL,'next_due':{}}
+       'background':POLL_ENABLED,'interval_seconds':POLL_INTERVAL,'next_due':{},
+       'callisto_autodownload':CALLISTO_AUTO,'callisto_station':CALLISTO_STATION}
 
 async def poll_once():
     if LOCK.locked():return {'busy':True}
@@ -39,6 +43,8 @@ async def poll_once():
         try:
             now=time.monotonic()
             due=[f for f in FEEDS if _next_due.get(f[0],0)<=now]
+            if CALLISTO_AUTO and _next_due.get('e-Callisto raw FITS',0)<=now:
+                due.append(('e-Callisto raw FITS',ARCHIVE_BASE,None,{}))
             if not due:
                 return {'sources':[], 'skipped':'Sources are within their minimum polling interval',
                         'next_due':state['next_due']}
@@ -49,7 +55,16 @@ async def poll_once():
                 'User-Agent':'Magnexis-SIGNALWATCH/0.2 (+https://magnexis.org; scientific public-data monitor)',
                 'Accept':'application/json'},follow_redirects=False) as client:
                 for feed in due:
-                    result=await fetch_feed(client,DB,feed)
+                    if feed[0]=='e-Callisto raw FITS':
+                        try:
+                            result=await download_recent(client,DB,INBOX / 'callisto_auto',station=CALLISTO_STATION)
+                            DB.source_status(feed[0],result['archive_url'],status='ok',
+                                records_seen=result['seen'],new_events=0)
+                        except Exception as exc:
+                            result={'source':feed[0],'ok':False,'error':str(exc)[:250]}
+                            DB.source_status(feed[0],ARCHIVE_BASE,status='error',error=str(exc)[:250])
+                    else:
+                        result=await fetch_feed(client,DB,feed)
                     results.append(result)
                     name=feed[0]
                     if result['ok']:
@@ -69,6 +84,7 @@ async def scan_radio_once():
     async with RADIO_LOCK:
         results=await asyncio.to_thread(scan_inbox,DB,INBOX)
         handled=[r for r in results if not r.get('skipped')]
+        await asyncio.to_thread(prune_processed_cache,DB,INBOX/'callisto_auto')
         DB.source_status('SETI radio inbox',str(INBOX),status='ok',records_seen=len(results),
                          new_events=sum(r.get('candidates',0) for r in handled))
         return handled
@@ -160,6 +176,10 @@ def events_csv(source:str|None=None):
 @app.get('/api/samples')
 def samples(source:str='NOAA GOES X-ray',limit:int=Query(240,ge=5,le=1000)):
     return DB.get_samples(source,limit)
+
+@app.get('/api/radio/observations')
+def radio_observations(limit:int=Query(40,ge=1,le=200)):
+    return DB.get_radio_observations(limit)
 
 @app.get('/api/radio/files')
 def radio_files():return DB.get_radio_files()

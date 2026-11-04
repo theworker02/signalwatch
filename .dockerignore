@@ -7,3 +7,6 @@ data/
 tests/
 examples/
 *.sqlite3
+*.fit
+*.fits
+*.fit.gz

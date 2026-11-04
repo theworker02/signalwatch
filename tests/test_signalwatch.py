@@ -166,3 +166,100 @@ async def test_poller_rate_limits_and_backoff(tmp_path,monkeypatch):
     await appmod.poll_once()
     assert len(calls)==first
     assert appmod._next_due['NASA JPL']>appmod._next_due['NOAA Kp']
+
+# v0.3: live-ish e-Callisto FITS archive, separated from SETI scoring.
+from signalwatch.ecallisto import parse_index, process_ecallisto_index
+from signalwatch.callisto_feed import parse_archive_listing, decompress_fits, download_recent, archive_url
+from signalwatch.solar import scan_solar_bursts
+import gzip
+
+
+def test_sftp_upload_index_is_metadata_only_and_deduped(tmp_path):
+    stamp='SFTP directory listing\n===\n' + (f'  760320  2026-11-04 16:14:53  GERMANY-DLR_20261104_150000_62.fit\n')
+    observations=parse_index(stamp)
+    assert len(observations)==1
+    assert observations[0]['category']=='solar_radio_spectrum'
+    assert 'metadata_only' in observations[0]['data_availability']
+    store=Store(tmp_path/'db.sqlite3')
+    assert process_ecallisto_index(store,stamp)==(1,1)
+    assert process_ecallisto_index(store,stamp)==(1,0)
+    assert store.get_radio_observations()[0]['station']=='GERMANY-DLR'
+    assert store.recent_events()==[]
+
+
+def test_sftp_rejects_non_fit_and_unrecognized_index():
+    with pytest.raises(ValueError):parse_index('<html>Nothing public</html>')
+    with pytest.raises(ValueError):parse_index('SFTP directory listing\n 32 2026-11-04 15:00:00 .bash_history')
+
+
+def test_archive_listing_rejects_external_paths_and_wrong_date():
+    timestamp=datetime(2026,11,4,16,15,tzinfo=timezone.utc)
+    html='<h1>Index of /solarradio/data/2002-20yy_Callisto/2026/11/04</h1>\n' + '\n'.join([
+        '<a href="ALGERIA-CRAAG_20261104_154500_59.fit.gz">NEW</a>',
+        '<a href="ALGERIA-CRAAG_20261104_153000_59.fit.gz">OLD</a>',
+        '<a href="https://evil.example/file.fit.gz">NO</a>',
+        '<a href="../../ALGERIA-CRAAG_20261104_153000_59.fit.gz">NO</a>',
+        '<a href="GERMANY-DLR_20261104_153000_59.fit.gz">OTHER</a>',
+        '<a href="ALGERIA-CRAAG_20261105_153000_59.fit.gz">WRONG</a>',
+        '<a href="ALGERIA-CRAAG_20261104_200000_59.fit.gz">FUTURE</a>'
+    ])
+    found=parse_archive_listing(html,date='20261104',station='ALGERIA-CRAAG',clock=timestamp)
+    assert found==['ALGERIA-CRAAG_20261104_154500_59.fit.gz','ALGERIA-CRAAG_20261104_153000_59.fit.gz']
+
+
+def test_gzip_fits_rejects_nonfits_bombs_and_bad_magic():
+    with pytest.raises(ValueError):decompress_fits(gzip.compress(b'not-a-FITS'))
+    sample=b'SIMPLE  = '+b' ' * 2048
+    assert decompress_fits(gzip.compress(sample))==sample
+    with pytest.raises(ValueError):decompress_fits(gzip.compress(sample)*27000)
+
+
+@pytest.mark.asyncio
+async def test_archive_fetch_with_mock_transport_no_external_requests(tmp_path):
+    clock=datetime(2026,11,4,16,15,tzinfo=timezone.utc)
+    name='ALGERIA-CRAAG_20261104_154500_59.fit.gz'
+    html=f'<h1>Index of /solarradio/data/2002-20yy_Callisto/2026/11/04</h1><a href="{name}">{name}</a>'
+    payload=gzip.compress(b'SIMPLE  = '+b' ' * 1024)
+    requested=[]
+    def handler(req):
+        requested.append(str(req.url))
+        assert req.url.host=='soleil.i4ds.ch'
+        if req.url.path.endswith('/'):return httpx.Response(200,text=html)
+        if req.url.path.endswith(name):return httpx.Response(200,content=payload)
+        return httpx.Response(404)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        store=Store(tmp_path/'data.sqlite')
+        first=await download_recent(client,store,tmp_path/'inbox',now=clock)
+        assert first['downloaded']==[name.replace('.fit.gz','.fit')]
+        assert first['data_category']=='solar_radio_not_SETI'
+        second=await download_recent(client,store,tmp_path/'inbox',now=clock)
+        assert second['downloaded']==[]
+    assert len(requested)==3
+    assert (tmp_path/'inbox'/name.replace('.fit.gz','.fit')).read_bytes().startswith(b'SIMPLE  =')
+
+
+def test_solar_burst_detected_not_seti():
+    rng=np.random.default_rng(195)
+    power=rng.normal(15,1,(120,128)).astype('float32')
+    power[45:61,20:105]+=20
+    # Persistent strong transmitter should vanish under per-frequency baseline.
+    power[:,5]+=80
+    hits=scan_solar_bursts(power)
+    assert hits and hits[0]['classification']=='unverified_broadband_solar_radio_transient'
+    assert hits[0]['start_sample']<=46 and hits[0]['end_sample']>=60
+    assert 'not evidence of extraterrestrial' in hits[0]['note']
+
+
+def test_solar_noise_or_narrowband_rfi_not_broadband_event():
+    rng=np.random.default_rng(195)
+    noise=rng.normal(15,1,(120,128)).astype('float32')
+    assert scan_solar_bursts(noise)==[]
+    noise[:,15]+=90
+    noise[45:70,18]+=75
+    assert scan_solar_bursts(noise)==[]
+
+
+def test_on_off_rejects_misaligned_shapes():
+    p=demo_power()
+    with pytest.raises(ValueError,match='identical matrix shapes'):
+        scan_matrix(p,off_target=p[:,:-1])

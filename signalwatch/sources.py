@@ -2,6 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from math import isfinite
 import httpx
+from .ecallisto import INDEX_URL, process_ecallisto_index
 
 NOAA_XRAY = 'https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json'
 NOAA_FLARES = 'https://services.swpc.noaa.gov/json/goes/primary/xray-flares-7-day.json'
@@ -194,6 +195,7 @@ FEEDS = [
  ('NOAA solar flares',NOAA_FLARES,process_flares,{}),
  ('NOAA Kp',NOAA_KP,process_kp,{}),
  ('NOAA solar radio',NOAA_RADIO,process_solar_radio,{}),
+ ('e-Callisto upload index',INDEX_URL,process_ecallisto_index,{}),
  ('NASA JPL',JPL_CAD,process_jpl,{'params':{'date-min':'now','date-max':'+30','dist-max':'5LD','limit':'300'}}),
  ('SatNOGS',SATNOGS,process_satnogs,{'params':{'page':1}}),
 ]
@@ -206,8 +208,9 @@ async def fetch_feed(client: httpx.AsyncClient, store, feed):
         response.raise_for_status()
         if len(response.content)>6_000_000:
             raise ValueError('Feed exceeded 6MB safety limit')
-        seen,added=parser(store,response.json())
-        store.source_status(name,url,status='ok',records_seen=seen,new_events=added)
+        seen,added=parser(store,response.text if parser is process_ecallisto_index else response.json())
+        store.source_status(name,url,status='ok',records_seen=seen,
+                            new_events=0 if parser is process_ecallisto_index else added)
         return {'source':name,'ok':True,'seen':seen,'added':added}
     except Exception as exc:
         store.source_status(name,url,status='error',error=f'{type(exc).__name__}: {str(exc)[:220]}')

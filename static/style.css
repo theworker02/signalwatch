@@ -11,3 +11,13 @@
 .review-bar input{min-width:155px;max-width:260px;flex:1}
 .review-bar button{color:#60e3c2;cursor:pointer}
 .review-bar button:disabled{opacity:.5}
+
+/* v0.3 solar-radio observation browser */
+.radio-panel{display:grid;gap:12px;padding:20px;}
+.radio-panel p{line-height:1.6;margin:0;color:var(--muted,#aec0c5)}
+.radio-panel a{color:#58e5be;text-decoration:none;font-size:12px}
+.radio-observations{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:8px;max-height:300px;overflow:auto}
+.radio-observation{border:1px solid #284350;border-radius:9px;padding:9px;display:grid;gap:4px;background:#0c1e28;font-size:12px}
+.radio-observation strong{color:#bfe6de}
+.radio-observation span{color:#8ab4bf}
+.radio-observation small{color:#698b95;overflow-wrap:anywhere}

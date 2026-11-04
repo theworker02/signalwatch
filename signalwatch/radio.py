@@ -123,14 +123,18 @@ def scan_matrix(power, max_drift=12, max_candidates=6, off_target=None):
         out.append({'start_bin':channel,'drift_bins':drift,'mean_robust_z':round(strength,2),
                     'occupancy':round(occupancy,3),'priority_score':score,
                     'classification':'possible_stationary_RFI' if rfi_like else 'unverified_drifting_narrowband',
+                    'quality_flags':['zero_or_low_drift_RFI_like'] if rfi_like else ['single_observation_unvalidated'],
                     'note':'Heuristic signal candidate; not evidence of extraterrestrial origin.'})
         if len(out)>=max_candidates:break
     if off_target is not None:
+        if np.shape(off_target)!=np.shape(power):
+            raise ValueError('ON/OFF comparison requires identical matrix shapes and calibrated frequency alignment')
         off=scan_matrix(off_target,max_drift=max_drift,max_candidates=30)
         for cand in out:
             if any(abs(o['start_bin']-cand['start_bin'])<=3 and abs(o['drift_bins']-cand['drift_bins'])<=3
                    for o in off):
                 cand['classification']='seen_off_target_likely_RFI'
+                cand['quality_flags'].append('present_in_OFF_observation')
                 cand['priority_score']=max(5,cand['priority_score']-35)
     return out
 
@@ -169,13 +173,21 @@ def analyze_file(store,path,source_name='Local radio recording'):
 def scan_inbox(store,folder):
     folder=Path(folder);folder.mkdir(parents=True,exist_ok=True)
     out=[]
-    for p in sorted(folder.iterdir()):
-        if p.is_symlink() or not p.is_file() or p.suffix.lower() not in ('.npy','.npz','.fil','.h5','.hdf5'):
+    # Only the operator inbox and the program-owned auto-download directory.
+    auto=folder/'callisto_auto'
+    candidates=list(folder.iterdir())
+    if auto.is_dir() and not auto.is_symlink():candidates.extend(auto.iterdir())
+    for p in sorted(candidates):
+        if p.is_symlink() or not p.is_file() or p.suffix.lower() not in ('.npy','.npz','.fil','.h5','.hdf5','.fit','.fits'):
             continue
         if p.name.startswith('.'):continue
         # Avoid loading a large telescope file while another process is still writing it.
         if datetime.now(timezone.utc).timestamp()-p.stat().st_mtime < 5: continue
-        out.append(analyze_file(store,p))
+        if p.suffix.lower() in ('.fit','.fits'):
+            from .solar import analyze_solar_fits
+            out.append(analyze_solar_fits(store,p))
+        else:
+            out.append(analyze_file(store,p))
     return out
 
 
