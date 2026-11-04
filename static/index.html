@@ -1,11 +1,11 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><meta name="theme-color" content="#080e17"/><meta name="description" content="Magnexis SIGNALWATCH — open-source astronomical observation monitoring and evidence-based radio signal research."/>
 <title>Magnexis / SIGNALWATCH</title><link rel="stylesheet" href="/static/style.css"/>
 </head><body>
 <div class="shell">
-<aside class="sidebar"><div class="mark"><div class="logo">M<span>⁄</span></div><div><strong>MAGNEXIS</strong><small>RESEARCH SYSTEMS</small></div></div>
-<div class="side-label">OBSERVATORY</div>
-<a class="nav active" href="#overview"><span class="nav-icon">◉</span> Overview</a>
+<aside class="sidebar"><div class="mark"><div class="logo" aria-hidden="true"><span class="brand-sigil">M</span></div><div><strong>MAGNEXIS</strong><small>RESEARCH SYSTEMS</small></div></div>
+<div class="side-label">RESEARCH WORKSPACE <span>01</span></div>
+<a class="nav active" href="#overview" aria-current="page"><span class="nav-icon">◉</span> Overview</a>
 <a class="nav" href="#signals"><span class="nav-icon">≋</span> Signal activity</a>
 <a class="nav" href="#events"><span class="nav-icon">◈</span> Event log</a>
 <a class="nav" href="#triage"><span class="nav-icon">◇</span> Research triage</a>
@@ -13,30 +13,32 @@
 <a class="nav" href="#radio-archive"><span class="nav-icon">∿</span> Radio observatory</a>
 <a class="nav" href="#seti"><span class="nav-icon">⌘</span> SETI laboratory</a>
 <a class="nav" href="#exoplanets"><span class="nav-icon">✦</span> Planet catalog</a>
-<div class="side-bottom"><span class="pulse-dot"></span><span>OPEN SCIENCE / v1.8</span></div>
+<div class="sidebar-utility"><div class="utility-head"><span class="pulse-dot"></span> LOCAL RESEARCH NODE</div><p>Research observations. Not proof of an extraterrestrial signal.</p><span class="utility-version">BUILD 1.8.1 · OPEN SCIENCE</span></div>
 </aside>
 <main id="overview">
-<header class="topbar"><div><span class="breadcrumb">SYSTEMS <b>/</b> SIGNALWATCH</span></div><div class="clock" id="clock">--:--:-- UTC</div></header>
-<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="pulse-dot"></span> OBSERVATORY CONTROL CENTER</div>
-<h1>Watch the <em>unknown.</em></h1>
-<p>Monitor public astronomical measurements, flag noteworthy activity, and investigate unverified radio candidates.</p>
-<div class="hero-actions"><button id="poll" class="primary">↻ &nbsp; Poll public sources now</button><span id="runtime" class="runtime">Connecting to local engine…</span></div>
-</div><div class="orb" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="planet"></div><div class="orb-core"></div></div></section>
-<section class="metrics" aria-label="Observatory metrics">
-<div class="metric"><span>INGESTED EVENTS</span><strong id="m-events">—</strong><small>Verified-source records only</small></div>
-<div class="metric"><span>RESEARCH FLAGS</span><strong id="m-alerts">—</strong><small>Awaiting scientific review</small></div>
-<div class="metric"><span>CONNECTED FEEDS</span><strong id="m-feeds">—</strong><small>Successful last fetch</small></div>
-<div class="metric"><span>RADIO FILES ANALYZED</span><strong id="m-radio">—</strong><small>Locally imported spectrograms</small></div>
+<header class="topbar"><div class="topbar-left"><span class="breadcrumb">MAGNEXIS <b>/</b> OBSERVATORY</span><span class="topbar-separator">/</span><span class="topbar-tag">MISSION CONTROL</span></div><div class="topbar-right"><span class="topbar-status"><span class="pulse-dot"></span> LOCAL NODE</span><div class="clock" id="clock">--:--:-- UTC</div></div></header>
+<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="pulse-dot"></span> ASTRONOMICAL RESEARCH / CONTROL DECK</div>
+<h1>The universe is <em>never silent.</em></h1>
+<p>An open-science workspace for monitoring astronomical feeds, analyzing radio observations, and investigating candidate signals with traceable evidence.</p>
+<div class="hero-actions"><button id="poll" class="primary"><span aria-hidden="true">↻</span> &nbsp; Refresh sources</button><a class="hero-secondary" href="#triage">Open investigation queue <span aria-hidden="true">↗</span></a></div><div id="runtime" class="runtime" role="status">Connecting to local engine…</div>
+</div><div class="hero-visual" aria-label="Illustrative radio spectrum, not telescope data"><div class="visual-top"><span>INSTRUMENT CHANNEL / VISUAL GUIDE</span><span class="visual-badge">SCHEMATIC</span></div><div class="spectrum-grid"><div class="visual-scan"></div><div class="signal-trace signal-trace-a"></div><div class="signal-trace signal-trace-b"></div><div class="signal-trace signal-trace-c"></div><span class="spectrum-target">SIGNAL / 001</span></div><div class="visual-bottom"><span>1420.400 MHz</span><span>HYDROGEN LINE / REFERENCE</span></div></div></section>
+<div class="science-notice"><span class="notice-icon" aria-hidden="true">i</span><div><strong>Scientific integrity first</strong><span>Candidate scores represent triage priority, not detection confidence. No live SETI telescope stream or extraterrestrial discovery is claimed.</span></div><a href="#seti">Methodology ↗</a></div>
+<div class="preview-ribbon" id="preview-ribbon" hidden><strong>PREVIEW MODE</strong> · Synthetic sample observations for interface demonstration only. The preview page does not request external feeds.</div>
+<div class="section-kicker"><span>AT A GLANCE</span><span>MISSION TELEMETRY / 4 CHANNELS</span></div><section class="metrics" aria-label="Observatory metrics">
+<div class="metric"><div class="metric-head"><span>INGESTED EVENTS</span><span class="metric-icon">◫</span></div><strong id="m-events">—</strong><small>Local evidence ledger</small></div>
+<div class="metric"><div class="metric-head"><span>RESEARCH FLAGS</span><span class="metric-icon">✳</span></div><strong id="m-alerts">—</strong><small>Awaiting scientific review</small></div>
+<div class="metric"><div class="metric-head"><span>CONNECTED FEEDS</span><span class="metric-icon">⌁</span></div><strong id="m-feeds">—</strong><small>Successful last fetch</small></div>
+<div class="metric"><div class="metric-head"><span>RADIO FILES ANALYZED</span><span class="metric-icon">∿</span></div><strong id="m-radio">—</strong><small>Locally imported spectrograms</small></div>
 </section>
 <div class="section-head" id="signals"><div><div class="eyebrow">01 / LIVE SPACE WEATHER</div><h2>Solar X-ray flux <span class="muted">· GOES</span></h2></div><div class="chart-controls"><span class="legend-dot"></span><span>0.1–0.8 nm</span></div></div>
-<section class="card chart-panel"><div class="chart-top"><div><span class="tiny-label">LATEST DATA POINT</span><div id="flux" class="readout">—</div><span id="flux-at" class="helper">Awaiting NOAA feed</span></div><div class="chart-warning">Observed solar activity ≠ extraterrestrial signal</div></div>
+<section class="card chart-panel"><div class="chart-top"><div><span class="tiny-label">LATEST DATA POINT</span><div id="flux" class="readout">—</div><span id="flux-at" class="helper">Awaiting NOAA feed</span></div><div class="chart-warning"><span class="soft-dot"></span> Space-weather measurement · Not a SETI detection</div></div>
 <div class="chart-wrap"><canvas id="chart" width="1100" height="290" role="img" aria-label="Solar X-ray measurements over time"></canvas><div id="chart-empty" class="chart-empty">No samples available. Poll sources once the server can reach NOAA.</div></div><div class="chart-footer"><span>GOES / NOAA SPACE WEATHER</span><span id="sample-count">0 DATA POINTS</span></div></section>
-<div class="section-head" id="events"><div><div class="eyebrow">02 / EVIDENCE RECORDS</div><h2>Observed events</h2></div><select id="filter" aria-label="Filter by source"><option value="">All sources</option><option value="NOAA GOES">Solar flares</option><option value="NOAA Kp">Geomagnetic storms</option><option value="NOAA solar radio">Solar radio flux</option><option value="e-Callisto solar radio">Solar radio spectrogram candidates</option><option value="NASA JPL">Asteroids</option><option value="SatNOGS">Satellite receptions</option><option value="SETI radio">Radio candidates</option></select></div>
+<div class="section-head" id="events"><div><div class="eyebrow">02 / EVIDENCE RECORDS</div><h2>Observed events</h2></div><div class="event-filters"><input id="event-search" type="search" placeholder="Search observations…" aria-label="Search events by title, source or summary"/><select id="filter" aria-label="Filter by source"><option value="">All sources</option><option value="NOAA GOES">Solar flares</option><option value="NOAA Kp">Geomagnetic storms</option><option value="NOAA solar radio">Solar radio flux</option><option value="e-Callisto solar radio">Solar radio spectrogram candidates</option><option value="NASA JPL">Asteroids</option><option value="SatNOGS">Satellite receptions</option><option value="SETI radio">Radio candidates</option></select></div></div>
 <div class="research-actions"><a class="export-link" href="/api/events.csv" download>↓ Export evidence CSV</a><span class="helper">Review status is saved locally to SQLite</span></div>
 <section class="card events-card"><div class="table-h"><span>EVENT / CLASSIFICATION</span><span>OBSERVED / REFERENCE</span><span>PRIORITY</span></div><div id="event-list"><div class="empty">Waiting for observation records.</div></div></section>
-<div class="section-head" id="triage"><div><div class="eyebrow">03 / TRIAGE & CORRELATION</div><h2>Investigation queue</h2></div><span class="chip">UNVERIFIED SIGNALS</span></div>
+<div class="section-head" id="triage"><div><div class="eyebrow">03 / TRIAGE & CORRELATION</div><h2>Investigation queue</h2></div><span class="chip">CANDIDATES · UNVERIFIED</span></div>
 <section class="card radio-panel"><p>Prioritized candidate records from available inputs. Cross-station time matches are research hints only; they do not establish physical radio coincidences, technosignatures, or extraterrestrial origin.</p><div class="triage-list" id="alert-list"><div class="empty">No unreviewed alerts yet.</div></div></section>
-<div class="section-head" id="sources"><div><div class="eyebrow">04 / INTEGRATIONS</div><h2>Source health</h2></div></div>
+<div class="section-head" id="sources"><div><div class="eyebrow">04 / INTEGRATIONS</div><h2>Source health</h2></div><span class="source-note">Verified fetch status, not stream uptime</span></div>
 <div id="source-list" class="source-grid"><div class="card empty">Source status pending.</div></div>
 <div class="section-head" id="radio-archive"><div><div class="eyebrow">05 / RADIO SPECTRA</div><h2>e-Callisto solar observatory</h2></div><span class="chip">~15-MIN ARCHIVE</span></div>
 <section class="card radio-panel"><p><b>Automatic public FITS observations.</b> The service checks the published e-Callisto archive for one station, downloads up to two new short spectrogram recordings per cycle, and separately screens them for broadband transients. Station observations are solar observations, not SETI targets. Availability and publication lag vary.</p><p id="callisto-status" class="helper">Waiting for archive status.</p><div id="radio-observation-list" class="radio-observations"><div class="empty">Waiting for public radio observation metadata.</div></div><a href="https://www.e-callisto.org/Data/data.html" target="_blank" rel="noopener noreferrer">Original data / terms and attribution ↗</a></section>
@@ -48,7 +50,8 @@
 <div class="section-head" id="exoplanets"><div><div class="eyebrow">07 / REFERENCE CATALOG</div><h2>Known exoplanets</h2></div><span class="chip">NASA TAP · DAILY</span></div>
 <section class="card radio-panel"><p>Public NASA catalog snapshots provide context for research. A new entry in our local database is <strong>not</strong> a planet discovered by SIGNALWATCH. The NASA service can be temporarily unavailable.</p><div id="exoplanet-list" class="radio-observations"><div class="empty">Waiting for the first NASA catalog snapshot.</div></div><a href="https://exoplanetarchive.ipac.caltech.edu/" target="_blank" rel="noopener noreferrer">NASA Exoplanet Archive ↗</a></section>
 <dialog class="research-dialog" id="research-modal" aria-label="Research event details"><div class="dialog-head"><strong>SCIENTIFIC INVESTIGATION</strong><button id="close-research" aria-label="Close research details">×</button></div><div id="research-detail">Choose a candidate.</div></dialog>
-<footer>MAGNEXIS SIGNALWATCH — EXPERIMENTAL RESEARCH PLATFORM <span>•</span> All flags require scientific verification. Priority scores are heuristics, not probabilities.</footer>
+<footer><div><strong>MAGNEXIS <span>⁄</span> SIGNALWATCH</strong><small>OPEN-SCIENCE SIGNAL OBSERVATORY · v1.8.1</small></div><p>Experimental research tooling. All candidate signals require independent verification. © 2026 Magnexis LLC.</p></footer>
 </main></div>
-<script src="/static/app.js"></script>
+<script src="/static/preview.js" defer></script>
+<script src="/static/app.js" defer></script>
 </body></html>

@@ -2,8 +2,19 @@ const $=s=>document.querySelector(s);
 const safe=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clock=()=>{$('#clock').textContent=new Date().toISOString().slice(11,19)+' UTC';}; clock();setInterval(clock,1000);
 const fdate=s=>{if(!s)return 'Unknown time';if(/^\d{4}-[A-Za-z]{3}-\d{2}/.test(s))return s+' TDB'; const d=new Date(s);return Number.isNaN(d.valueOf())?s:d.toISOString().replace('T',' ').slice(0,16)+' UTC';};
+const PREVIEW_MODE = new URLSearchParams(location.search).get('preview') === '1';
+if (PREVIEW_MODE) {
+ document.body.classList.add('is-preview');
+ document.querySelector('#preview-ribbon').hidden = false;
+ document.querySelector('#poll').disabled = true;
+ document.querySelector('#poll').title = 'Polling disabled for synthetic screenshot preview';
+ const banner = document.createElement('span'); banner.className = 'preview-label'; banner.textContent = 'SAMPLE DATA · NOT LIVE';
+ document.querySelector('.topbar-right').prepend(banner);
+ document.querySelectorAll('a[download]').forEach(a => {a.removeAttribute('href');a.removeAttribute('download');a.setAttribute('aria-disabled','true');a.title='Exports disabled in preview mode';});
+}
 let plotPoints=[]; let writeToken='';
-async function get(url){let r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error(`${r.status} ${r.statusText}`);return r.json()}
+let lastEvents = [];
+async function get(url){if(PREVIEW_MODE) return window.SIGNALWATCH_PREVIEW.get(url); let r=await fetch(url,{cache:'no-store'});if(!r.ok)throw Error(`${r.status} ${r.statusText}`);return r.json()}
 async function refresh(){
  try{
   const [status,sources,events,samples,radio,observations,alerts,planets,telemetry]=await Promise.all([
@@ -14,21 +25,23 @@ async function refresh(){
   $('#m-alerts').textContent=alerts.length+(alerts.length===30?'+':'');
   $('#m-radio').textContent=n.radio_files_processed;
   $('#m-feeds').textContent=sources.filter(s=>s.status==='ok').length+' / '+(sources.length||6);
-  $('#runtime').textContent=status.polling?'Polling live sources…':status.last_cycle?'Last completed '+fdate(status.last_cycle):'Waiting for first data cycle';
-  renderEvents(events);renderSources(telemetry.feeds);renderSamples(samples);renderRadioObservations(observations,status,sources);renderAlerts(alerts);renderExoplanets(planets.records);
+  $('#runtime').textContent=PREVIEW_MODE?'DEMO MODE · Illustrative observations only':status.polling?'Polling public sources…':status.last_cycle?'Last completed '+fdate(status.last_cycle):'Waiting for first data cycle';
+  lastEvents=events;renderEvents(events);renderSources(telemetry.feeds);renderSamples(samples);renderRadioObservations(observations,status,sources);renderAlerts(alerts);renderExoplanets(planets.records);
   const errors=radio.filter(r=>r.state==='error').length;
   $('#radio-status').textContent=radio.length?`${radio.filter(r=>r.state==='ok').length} processed · ${errors} errors · ${radio.reduce((n,r)=>n+r.candidate_count,0)} unverified candidate(s)`:'No local radio files have been processed.';
  }catch(e){$('#runtime').textContent='Cannot connect to local engine: '+e.message;}
 }
 function renderEvents(events){
+ const q=($('#event-search').value||'').trim().toLowerCase();
+ if(q) events=events.filter(e=>[e.title,e.summary,e.source,e.kind].some(v=>String(v||'').toLowerCase().includes(q)));
  if(!events.length){$('#event-list').innerHTML='<div class="empty">No matching observations yet. This is not a synthetic event stream.</div>';return}
  const states=['new','investigating','likely_interference','needs_followup','closed'];
- $('#event-list').innerHTML=events.map(e=>`<div class="event"><div><div class="event-title">${safe(e.title)}</div><div class="event-desc">${safe(e.summary)}</div><div class="review-bar"><select class="review-state" aria-label="Review state for event ${e.id}" data-id="${e.id}">${states.map(s=>`<option ${e.review_state===s?'selected':''} value="${s}">${s.replaceAll('_',' ')}</option>`).join('')}</select><input class="review-note" aria-label="Review note for event ${e.id}" data-id="${e.id}" maxlength="2000" placeholder="Investigator note" value="${safe(e.review_note||'')}"><button class="save-review" data-id="${e.id}">Save</button><button class="inspect-event" data-id="${e.id}">Investigate</button><a href="/api/events/${e.id}/evidence.json" download="signalwatch-evidence-${e.id}.json" class="event-link">↓ Evidence JSON</a></div></div><div class="event-date">${safe(fdate(e.observed_at))}${e.evidence_url?`<a class="event-link" href="${safe(e.evidence_url)}" target="_blank" rel="noopener noreferrer">VIEW SOURCE ↗</a>`:''}</div><div><span title="Heuristic triage priority, not detection confidence" class="score ${safe(e.severity)}">${e.severity==='observation'?'LOG':Math.round(e.score)+'/100'}</span></div></div>`).join('');
+ $('#event-list').innerHTML=events.map(e=>`<div class="event"><div><div class="event-title">${safe(e.title)}</div><div class="event-desc">${safe(e.summary)}</div><div class="review-bar"><select class="review-state" aria-label="Review state for event ${e.id}" data-id="${e.id}">${states.map(s=>`<option ${e.review_state===s?'selected':''} value="${s}">${s.replaceAll('_',' ')}</option>`).join('')}</select><input class="review-note" aria-label="Review note for event ${e.id}" data-id="${e.id}" maxlength="2000" placeholder="Investigator note" value="${safe(e.review_note||'')}"><button class="save-review" data-id="${e.id}">Save</button><button class="inspect-event" data-id="${e.id}">Investigate</button>${PREVIEW_MODE?'':`<a href="/api/events/${e.id}/evidence.json" download="signalwatch-evidence-${e.id}.json" class="event-link">↓ Evidence JSON</a>`}</div></div><div class="event-date">${safe(fdate(e.observed_at))}${!PREVIEW_MODE&&e.evidence_url?`<a class="event-link" href="${safe(e.evidence_url)}" target="_blank" rel="noopener noreferrer">VIEW SOURCE ↗</a>`:''}</div><div><span title="Heuristic triage priority, not detection confidence" class="score ${safe(e.severity)}">${e.severity==='observation'?'LOG':Math.round(e.score)+'/100'}</span></div></div>`).join('');
 }
 $('#event-list').addEventListener('click',async ev=>{
  const inspect=ev.target.closest('.inspect-event'); if(inspect){await showResearch(inspect.dataset.id);return;}
  const btn=ev.target.closest('.save-review'); if(!btn)return;
- const id=btn.dataset.id;const card=btn.closest('.event'); const state=card.querySelector('.review-state').value;
+ if(PREVIEW_MODE){btn.textContent='Preview only';return;}const id=btn.dataset.id;const card=btn.closest('.event'); const state=card.querySelector('.review-state').value;
  const note=card.querySelector('.review-note').value;btn.disabled=true;
  try{const r=await fetch(`/api/events/${id}/review`,{method:'PATCH',headers:{'Content-Type':'application/json',...(writeToken?{'x-signalwatch-token':writeToken}:{})},body:JSON.stringify({state,note})});
    if(r.status===401){writeToken=prompt('Enter configured SIGNALWATCH_WRITE_TOKEN (held in memory only)')||'';throw new Error('Token required. Retry save.')}if(!r.ok)throw new Error(await r.text());btn.textContent='Saved';}
@@ -43,7 +56,7 @@ function renderRadioObservations(observations,status,sources){
  const archive=sources.find(s=>s.name==='e-Callisto raw FITS');
  const index=sources.find(s=>s.name==='e-Callisto upload index');
  const downloading=status.callisto_autodownload?'Automatic FITS downloads ON':'Automatic FITS downloads OFF';
- $('#callisto-status').textContent=`${downloading} · Station: ${status.callisto_station||'unconfigured'} · Archive status: ${archive?.status||'pending'} · Upload index: ${index?.status||'pending'}`;
+ $('#callisto-status').textContent=PREVIEW_MODE?'ILLUSTRATIVE SAMPLE · All source, station and timestamp values shown are examples.':`${downloading} · Station: ${status.callisto_station||'unconfigured'} · Archive status: ${archive?.status||'pending'} · Upload index: ${index?.status||'pending'}`;
  if(!observations.length){$('#radio-observation-list').innerHTML='<div class="empty">No indexed station observations yet.</div>';return;}
  $('#radio-observation-list').innerHTML=observations.map(o=>`<div class="radio-observation"><strong>${safe(o.station)}</strong><span>${safe(fdate(o.observed_at))}</span><small>${safe(o.filename)} · ${Math.round((o.size_bytes||0)/1024)} KB · metadata only</small></div>`).join('');
 }
@@ -63,10 +76,15 @@ function drawChart(){
  for(let i=0;i<=5;i++){let y=p.t+(h-p.t-p.b)*(i/5);c.strokeStyle='#26404b';c.setLineDash([4,5]);c.beginPath();c.moveTo(p.l,y);c.lineTo(w-p.r,y);c.stroke();c.setLineDash([]);c.fillStyle='#71929d';c.fillText('1e'+(-3-i),5,y+4)}
  if(plotPoints.length<2)return;
  c.beginPath();plotPoints.forEach((s,i)=>{let x=p.l+i/(plotPoints.length-1)*(w-p.l-p.r);let v=Math.log10(Math.max(s.metric,1e-9));let y=p.t+(max-v)/(max-min)*(h-p.t-p.b);y=Math.max(p.t,Math.min(h-p.b,y));i?c.lineTo(x,y):c.moveTo(x,y)});
- c.strokeStyle='#57e6c5';c.lineWidth=1.8;c.shadowColor='#33ecbb';c.shadowBlur=6;c.stroke();c.shadowBlur=0;
+ const x0=p.l, last=plotPoints.length-1;
+ const curve = (i,point)=>{const x=p.l+i/last*(w-p.l-p.r); const v=Math.log10(Math.max(point.metric,1e-9)); const y=p.t+(max-v)/(max-min)*(h-p.t-p.b);return [x,Math.max(p.t,Math.min(h-p.b,y))]};
+ const filled=c.createLinearGradient(0,p.t,0,h);filled.addColorStop(0,'rgba(91,229,207,.27)');filled.addColorStop(1,'rgba(91,229,207,0)');
+ c.lineTo(w-p.r,h-p.b); c.lineTo(x0,h-p.b); c.closePath();c.fillStyle=filled;c.fill();
+ c.beginPath(); plotPoints.forEach((point,i)=>{const [x,y]=curve(i,point);i?c.lineTo(x,y):c.moveTo(x,y)});
+ c.strokeStyle='#57e6c5';c.lineWidth=2.2;c.shadowColor='#33ecbb';c.shadowBlur=8;c.stroke();c.shadowBlur=0;
  c.fillStyle='#7893a0';c.fillText(fdate(plotPoints[0].observed_at).slice(5,16),p.l,h-5);let end=fdate(plotPoints[plotPoints.length-1].observed_at).slice(5,16);c.fillText(end,Math.max(p.l,w-p.r-110),h-5);
 }
-$('#poll').addEventListener('click',async()=>{$('#poll').disabled=true;$('#runtime').textContent='Requesting source refresh…';try{const r=await fetch('/api/poll',{method:'POST',headers:writeToken?{'x-signalwatch-token':writeToken}:{}});if(r.status===401){writeToken=prompt('Enter configured SIGNALWATCH_WRITE_TOKEN (held in memory only)')||'';throw Error('Token required. Retry refresh.')}if(!r.ok)throw Error(r.status+' '+r.statusText);await refresh()}catch(e){$('#runtime').textContent='Refresh failed: '+e.message}finally{$('#poll').disabled=false}});
+$('#poll').addEventListener('click',async()=>{if(PREVIEW_MODE)return;$('#poll').disabled=true;$('#runtime').textContent='Requesting source refresh…';try{const r=await fetch('/api/poll',{method:'POST',headers:writeToken?{'x-signalwatch-token':writeToken}:{}});if(r.status===401){writeToken=prompt('Enter configured SIGNALWATCH_WRITE_TOKEN (held in memory only)')||'';throw Error('Token required. Retry refresh.')}if(!r.ok)throw Error(r.status+' '+r.statusText);await refresh()}catch(e){$('#runtime').textContent='Refresh failed: '+e.message}finally{$('#poll').disabled=false}});
 function renderAlerts(rows){
  $('#alert-list').innerHTML=rows.length?rows.map(e=>`<div class="triage-row"><div><b>${safe(e.title)}</b><div class="helper">${safe(e.source)} · ${safe(fdate(e.observed_at))} · ${safe(e.review_state)}</div></div><div class="triage-actions"><span class="score ${safe(e.severity)}">${Math.round(e.score)}/100</span><button class="inspect-event" data-id="${e.id}">Investigate</button></div></div>`).join(''):'<div class="empty">No currently flagged observations above threshold. This does not mean a live SETI stream has been scanned.</div>';
 }
@@ -78,10 +96,16 @@ async function showResearch(id){
  try{
   const d=await get('/api/events/'+encodeURIComponent(id));
   const ev=d.event, flags=d.triage.triage_issues||[];
-  $('#research-detail').innerHTML=`<h2>${safe(ev.title)}</h2><p>${safe(ev.summary)}</p><div class="research-grid"><div><label>Source</label><b>${safe(ev.source)}</b></div><div><label>Observed</label><b>${safe(fdate(ev.observed_at))}</b></div><div><label>Review</label><b>${safe(ev.review_state)}</b></div><div><label>Priority, not probability</label><b>${safe(ev.score)}/100</b></div></div><h3>Scientific caveats</h3><ul>${flags.map(f=>`<li>${safe(f.replaceAll('_',' '))}</li>`).join('')}</ul><h3>Other solar observing stations</h3>${d.cross_station_timing_hints.length?d.cross_station_timing_hints.map(h=>`<p>${safe(h.station)} · ${safe(h.time_difference_seconds)}s separation · ${safe(h.frequency_comparison)}</p>`).join(''):'<p>No independent station timing hints yet, or event is not a solar recording.</p>'}<h3>Review history</h3>${d.review_history.length?d.review_history.map(h=>`<p><b>${safe(h.state)}</b> · ${safe(h.updated_at)} · ${safe(h.note)}</p>`).join(''):'<p>No investigator reviews yet.</p>'}<a href="/api/events/${ev.id}/evidence.json" download>↓ Export self-checksummed evidence JSON</a><p class="helper">An anomaly is not a confirmed discovery. Confirm the instrument and exclude interference.</p>`;
+  $('#research-detail').innerHTML=`<h2>${safe(ev.title)}</h2><p>${safe(ev.summary)}</p><div class="research-grid"><div><label>Source</label><b>${safe(ev.source)}</b></div><div><label>Observed</label><b>${safe(fdate(ev.observed_at))}</b></div><div><label>Review</label><b>${safe(ev.review_state)}</b></div><div><label>Priority, not probability</label><b>${safe(ev.score)}/100</b></div></div><h3>Scientific caveats</h3><ul>${flags.map(f=>`<li>${safe(f.replaceAll('_',' '))}</li>`).join('')}</ul><h3>Other solar observing stations</h3>${d.cross_station_timing_hints.length?d.cross_station_timing_hints.map(h=>`<p>${safe(h.station)} · ${safe(h.time_difference_seconds)}s separation · ${safe(h.frequency_comparison)}</p>`).join(''):'<p>No independent station timing hints yet, or event is not a solar recording.</p>'}<h3>Review history</h3>${d.review_history.length?d.review_history.map(h=>`<p><b>${safe(h.state)}</b> · ${safe(h.updated_at)} · ${safe(h.note)}</p>`).join(''):'<p>No investigator reviews yet.</p>'}${PREVIEW_MODE?'<span class="preview-modal-note">Preview mode: evidence export disabled</span>':`<a href="/api/events/${ev.id}/evidence.json" download>↓ Export self-checksummed evidence JSON</a>`}<p class="helper">An anomaly is not a confirmed discovery. Confirm the instrument and exclude interference.</p>`;
   $('#research-modal').showModal();
  }catch(e){console.error(e)}
 }
 $('#close-research').addEventListener('click',()=>$('#research-modal').close());
+$('#event-search').addEventListener('input',()=>renderEvents(lastEvents));
 $('#filter').addEventListener('change',refresh);window.addEventListener('resize',drawChart);
-refresh();setInterval(refresh,15000);
+const links=[...document.querySelectorAll('.nav[href^="#"]')];
+const targets=links.map(a=>document.querySelector(a.getAttribute('href'))).filter(Boolean);
+if('IntersectionObserver' in window){
+ const spy=new IntersectionObserver(entries=>{const e=entries.filter(v=>v.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top)[0];if(!e)return;links.forEach(a=>{const selected=a.getAttribute('href')==='#'+e.target.id;a.classList.toggle('active',selected);selected?a.setAttribute('aria-current','location'):a.removeAttribute('aria-current')})},{rootMargin:'-18% 0px -65% 0px',threshold:0}); targets.forEach(t=>spy.observe(t));
+}
+refresh();if(!PREVIEW_MODE)setInterval(refresh,15000);

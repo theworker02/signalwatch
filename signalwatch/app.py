@@ -55,7 +55,7 @@ async def poll_once():
             # and requests conservative polling and backoff.
             results=[]
             async with httpx.AsyncClient(timeout=14.0,headers={
-                'User-Agent':'Magnexis-SIGNALWATCH/1.8 (+https://magnexis.org; scientific public-data monitor)',
+                'User-Agent':'Magnexis-SIGNALWATCH/1.8.1 (+https://magnexis.org; scientific public-data monitor)',
                 'Accept':'application/json'},follow_redirects=False) as client:
                 for feed in due:
                     if feed[0]=='e-Callisto raw FITS':

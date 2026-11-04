@@ -1,158 +1,245 @@
-# Magnexis SIGNALWATCH v1.8
+<div align="center">
 
-An **experimental, continuous astronomical-data observatory** with a **dedicated narrowband SETI research laboratory**, automated **solar-radio spectrogram ingestion**, candidate triage and auditable research records. Built by **Magnexis LLC**.
+# MAGNEXIS / SIGNALWATCH
 
-> **Scientific boundary:** SIGNALWATCH does not establish extraterrestrial intelligence, discover planets, predict asteroid impacts, or scientifically confirm solar-radio bursts. It flags data patterns worth investigating. Priority scores are *not probabilities*. Source datasets have different latency and observational targets.
+**An astronomical anomaly observatory built for evidence-first research.**
 
-## What is connected
+Monitor public space-weather observations, inspect solar-radio spectrograms, and triage unverified radio candidates from a single local command center.
 
-| Source | Update strategy | Classification and limitation |
+![Version 1.8.1](https://img.shields.io/badge/version-1.8.1-123b44?style=flat-square) ![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-234c61?style=flat-square) ![Status: Research prototype](https://img.shields.io/badge/status-research%20prototype-b5843e?style=flat-square) [![Tests](https://github.com/theworker02/signalwatch/actions/workflows/tests.yml/badge.svg)](https://github.com/theworker02/signalwatch/actions/workflows/tests.yml)
+
+[Quick start](#quick-start) · [Interface](#interface-gallery) · [How it works](#how-signalwatch-works) · [Research integrity](#research-integrity) · [API](#api-and-operator-tools)
+
+</div>
+
+> [!IMPORTANT]
+> **SIGNALWATCH is experimental research software, not an extraterrestrial detection service.** It does **not** confirm technosignatures, discover planets, forecast asteroid impacts, or independently establish the origin of a radio burst. Scores indicate investigation priority—not the probability that an event is artificial or extraterrestrial. There is no continuously streaming distant-target SETI telescope connected to this release.
+
+## Interface gallery
+
+**Mission control — desktop**
+
+![SIGNALWATCH desktop command center with synthetic sample data and a prominent preview label](docs/screenshots/dashboard-desktop.png)
+
+<table><tr><td width="67%">
+
+**Research triage:** inspect candidate records, compare sources, and investigate anomalies.
+
+<img src="docs/screenshots/research-overview.png" alt="Research triage showing sample candidate signals clearly marked as unverified" width="100%" />
+</td><td width="33%">
+
+**Mobile workspace:** adaptive sidebar, metrics, and research status.
+
+<img src="docs/screenshots/dashboard-mobile.png" alt="SIGNALWATCH responsive mobile dashboard using clearly marked synthetic sample data" width="100%" />
+</td></tr></table>
+
+**Solar monitoring**
+
+![Solar X-ray chart populated with synthetic example data (not real solar activity)](docs/screenshots/solar-analysis.png)
+
+**Investigation detail**
+
+![Detailed research modal showing scientific caveats, event provenance, and review history](docs/screenshots/investigation-detail.png)
+
+*All screenshots show the **opt-in synthetic preview dataset** (`?preview=1`). They document the actual HTML/CSS/JS interface, not live observations, discovered signals, or verified source availability. Screenshot capture does not write demonstration data into the research database.*
+
+## Capabilities
+
+| Area | What it does | Scientific boundary |
 |---|---|---|
-| **e-Callisto public FITS spectra** | Poll published UTC-day archive about every 15 min; at most 2 small spectra/cycle, from distinct stations in AUTO mode; check previous day briefly after UTC midnight | Real radio measurements pointed at the **Sun**; broadband transient research, **not SETI**. Publication is delayed; availability varies. |
-| **e-Callisto uploaded-file index** | Every ~15 min | Metadata only, **not actual signal samples**. |
-| **NOAA GOES X-rays, flare events, Kp and solar radio flux** | Every ~5–10 min | Public space weather, not extraterrestrial signals. |
-| **NASA/JPL close-approach predictions** | Every ~6 hours | Previously catalogued small bodies; predicted close approaches are not new discoveries or impact-risk statements. |
-| **SatNOGS network** | Every ~10 min | Community satellite observation metadata, not RF spectrogram validation. |
-| **NASA Exoplanet Archive** | Daily, using public TAP JSON queries | A bounded snapshot of already confirmed planets. First observation in this local database is **not** a new planet discovery. The source may experience service interruptions. |
-| **SETI narrowband file watcher** | Local inbox checked every 20 seconds | `.npy`, `.npz`, and optional `blimpy` `.fil`/`.h5` observations. No continuously streaming distant-target SETI telescope is connected. |
+| **Space weather** | Monitors public NOAA GOES X-ray, solar flux, flare, and Kp measurements | Solar and geomagnetic activity, **not SETI** |
+| **Solar radio** | Periodically discovers recent e-Callisto FITS archives, downloads bounded recordings, screens broadband temporal enhancements | Solar targets; anomalies require RFI and instrument checks |
+| **Narrowband SETI laboratory** | Analyzes locally imported power spectrograms (`.npy`, `.npz`, optional `.fil` and `.h5`) for drifting narrowband traces | Archived/imported files, **not live telescope streaming** |
+| **Satellite observations** | Retrieves SatNOGS observation metadata | Metadata does not provide a validated RF signal |
+| **Solar-system context** | Retrieves NASA/JPL close-approach predictions for already catalogued objects | Not an asteroid discovery or impact-warning engine |
+| **Known planets** | Reads NASA Exoplanet Archive reference records | No new exoplanet detection |
+| **Research operations** | Candidate triage, append-only review history, evidence JSON/checksums, CSV export, source freshness, SQLite persistence | Human review and independent scientific validation required |
 
-Public sources are polled with conservative per-source rate limits and exponential backoff. The dashboard distinguishes source success, age, errors, and archive metadata from actual analyzed spectra. All data processing runs on your computer or your own server, not in ChatGPT's background.
+Data providers update on different schedules. *Continuous operation* means that the local service **periodically polls eligible public sources**, subject to their publication delays and rate limits; it does not imply continuous RF sampling of the sky.
 
-## What's new in v1.8
+## Quick start
 
-- **Scientific research investigation queue** at `/api/alerts`: filters synthetic/test items, routine satellite observations and closed/interference reviews, with a minimum heuristic score.
-- **Cross-station solar-radio timing hints**: compares event timestamps across distinct e-Callisto stations in a five-minute window. When both axes are calibrated, frequency ranges must overlap. A time match is never claimed to be a true frequency-coincident astrophysical event or extraterrestrial transmitter.
-- **Permanent investigation audit history** with current state and previous reviewer notes, plus `/api/events/{id}` details.
-- **Downloadable evidence JSON** with canonical SHA-256 digest, event metadata, source-health snapshot, review history, triage caveats and timing hints. This is an integrity checksum, not a cryptographic attestation or scientific certificate.
-- **Local candidate change feed** (`/api/events/changes?after_id=0`), dashboard research modal, and separately identified known-planet catalog.
-- **Operator CLI** (`doctor`, `scan`, `poll`, `alerts`, `backup`), optional write token, network-source freshness metrics, and station-archive polling across UTC midnight.
-- **Content hashes** for imported radio files up to 256 MB; very large telescope files explicitly note that a full-file digest was not calculated.
-- **Regression tests** for the above behavior and a conditional Astropy FITS integration test.
-
-Versions v0.4 through v1.7 were not individually released; v1.8 is a consolidated milestone following v0.3.
-
-## Quick start (Windows / macOS / Linux)
-
-Python **3.10+** and an internet connection are needed for public feeds. Python package downloads and external observations may use disk space.
+**Requirements:** Python 3.10 or newer; internet access for public feeds; a modern browser. There are **no paid API keys** required for the default integrations.
 
 ```bash
-cd magnexis-signalwatch
+# Clone the repository
+git clone https://github.com/theworker02/signalwatch.git
+cd signalwatch
+
+# Create an isolated Python environment
 python -m venv .venv
-# Windows PowerShell: .venv\Scripts\Activate.ps1
-# macOS / Linux: source .venv/bin/activate
+
+# macOS / Linux
+source .venv/bin/activate
+# Windows PowerShell, instead use: .venv\Scripts\Activate.ps1
+
 python -m pip install -r requirements.txt
 python -m signalwatch.cli doctor
 python run.py
 ```
 
-Open **http://127.0.0.1:8765**. Windows also supports double-clicking `start_windows.bat`. The application binds to loopback by default.
+Open **http://127.0.0.1:8765**. On Windows you can also use `start_windows.bat`. The server binds to loopback by default—no public deployment is implied.
 
-To run continuously on a host that remains on, Docker Compose uses a persistent local `./data` directory:
+### Docker Compose
 
 ```bash
 docker compose up -d --build
 docker compose logs -f
 ```
 
-This is **not** a hosted service by default. It stops when your host is off. Docker Compose exposes the dashboard only on `127.0.0.1:8765`; the internal container port may listen on all interfaces inside Docker.
+Docker exposes the UI only at **127.0.0.1:8765** and persists observations under `./data/`. The local computer or host must remain running for ongoing polling.
 
-### Operator commands
-
-```bash
-python -m signalwatch.cli doctor  # Local status, no external requests
-python -m signalwatch.cli poll    # One eligible public-source polling cycle
-python -m signalwatch.cli scan    # Scan local files, may prune old program-owned auto-cache
-python -m signalwatch.cli alerts --min-score 60
-python -m signalwatch.cli backup  # Consistent snapshot in data/backups/
-python -m pytest -q
-```
-
-The polling command **respects** source cooldowns within the running process; starting a new process resets in-memory cooldowns, so don't create rapid cron loops. Prefer the single always-on service. To reduce background requests:
-
-```bash
-SIGNALWATCH_CALLISTO_DOWNLOAD=0    # Stop automatic FITS downloads
-SIGNALWATCH_BACKGROUND=0           # Disable all background polling / scanning
-SIGNALWATCH_CALLISTO_STATION=AUTO   # Choose up to two different stations/cycle
-```
-
-Set these as shell environment variables or add them to your Compose environment.
-
-### Access restrictions
-
-This is a **local research prototype**, **not an authenticated internet-facing dashboard**. Keep the default loopback bind. There is browser-origin screening on mutation endpoints and an optional `SIGNALWATCH_WRITE_TOKEN` required for `PATCH /api/events/{id}/review` and `POST /api/poll`. With a token configured, the browser asks for it when needed and only holds it in page memory.
-
-That token is not full user authentication and does not protect read-only API endpoints. Do not publish the application behind a public reverse proxy without proper authentication, HTTPS, authorization, CSRF controls and rate limits. Store secrets outside git and never commit them.
-
-## SETI laboratory
-
-Import **authorized actual telescope observations** from [Breakthrough Listen](https://seti.berkeley.edu/opendata):
+### Optional radio analysis dependencies
 
 ```bash
 python -m pip install -r requirements-radio.txt
-python -m signalwatch.radio path/to/ON.fil --off path/to/OFF.fil
+python -m signalwatch.radio /path/to/on_target.fil --off /path/to/off_target.fil
 ```
 
-Alternatively, place power spectrograms in `data/inbox/` (not raw complex IQ). The engine uses per-time-row median/MAD normalization, tests linear frequency-drift templates, requires persistence, flags near-zero drift as RFI-like, and optionally compares an off-target control. **ON/OFF comparison requires aligned frequency axes, observing times and telescope pointing**; same matrix shape alone is insufficient scientific validation.
+Alternatively, place *authorized, actual recorded power spectrograms* into `data/inbox/`. Supported paths include `.npy`, `.npz`, and—when `blimpy` is installed—`.fil` and `.h5`. The service watches the inbox roughly every 20 seconds. Very large recordings are analyzed using a bounded cutout; the entire original band is **not** searched in that case.
 
-For large `.fil`/`.h5` inputs, only a **central 2,048-channel × first 192-integration cutout** is analyzed; no full-band survey claim is made. `.npz` files may include `start_frequency_mhz`, `channel_width_hz`, `integration_seconds`, `observation_start_utc` or `observation_mjd` for better provenance. Local `.npy` matrices without a timestamp record the analysis time, not necessarily observation time.
+For educational validation only:
 
 ```bash
 python -m signalwatch.radio --demo
 python -m examples.make_synthetic
 ```
 
-Synthetic tests are marked `test`, have score 0, and must never appear as real discoveries. Never rename a synthetic input to disguise its provenance.
+Synthetic input is always test data, never scientific evidence.
 
-## e-Callisto radio telescope ingestion
+## How SIGNALWATCH works
 
-The auto-downloader reads a bounded listing from the [published e-Callisto archive](https://soleil.i4ds.ch/solarradio/data/2002-20yy_Callisto/), validates filenames and date bounds, refuses external links, bounds compressed files to **3 MB**, uncompressed FITS to **40 MB**, and its program-owned cache to **350 MB**. It never automatically deletes manually imported recordings. Program-owned processed `.fit` files may be removed after **24 hours**; research metadata and file digest remain in SQLite. These operational limits are conservative and may exclude some valid observations.
+```mermaid
+flowchart TD
+  A[NOAA / NASA JPL / SatNOGS] --> B[Source-aware polling & backoff]
+  E[e-Callisto FITS archive] --> C[Solar-radio transient screening]
+  F[Local authorized SETI recordings] --> D[Narrowband drift template screening]
+  B --> G[SQLite observation and evidence ledger]
+  C --> G
+  D --> G
+  G --> H[Candidate prioritization and source health]
+  H --> I[Investigator review and audit history]
+  I --> J[Downloadable evidence JSON / CSV]
+```
 
-The solar detector finds multi-channel transient enhancements using robust per-channel background subtraction. **Solar emission, terrestrial interference and receiver gain changes are not yet distinguishable solely from the detector output.** Cross-station temporal matching is a review hint, not scientific confirmation. Station positions, calibrated channel overlap, spectral shape, simultaneous ON/OFF comparison and repeat independent observations should be assessed before any external claim.
+1. **Ingest conservatively.** Each source has distinct polling intervals, bounded downloads, and retry/backoff behavior; health status reveals errors and stale results.
+2. **Keep science channels separate.** Solar-radio broadband transients are not treated as distant-target SETI observations. Satellite metadata and exoplanet catalog entries are contextual records.
+3. **Score for triage, not certainty.** The radio detector performs robust row normalization and tests linear-frequency drift patterns. Near-zero drift and matching off-target recordings are flagged as possible terrestrial interference.
+4. **Preserve the evidence.** Investigation status and notes are stored in SQLite. Exported JSON contains observation metadata, caveats, review history, source status, and a canonical SHA-256 checksum for tamper detection. A checksum is **not** a scientific certificate.
+5. **Demand independent verification.** True technosignature research requires telescope pointing, calibrated frequency/time axes, instrument characterization, off-target controls, and independent follow-up.
 
-## API reference
+### Source cadences and limits
 
-| Method / path | Description |
-|---|---|
-| `GET /api/health` | App responding; **not** proof that external feeds work |
-| `GET /api/status` | Version, task status, database counts |
-| `GET /api/telemetry` | Feed success ages and stale flags |
-| `GET /api/sources` | Source status and last errors |
-| `GET /api/events?source=&kind=&review=` | Latest investigation and observation records |
-| `GET /api/events/changes?after_id=` | Locally appended event records since ID |
-| `GET /api/alerts?min_score=60` | Priority candidates excluding tests and closed/rejected |
-| `GET /api/events/{id}` | Event, review history, cautious station timing hints |
-| `GET /api/events/{id}/evidence.json` | Checksumed research bundle |
-| `PATCH /api/events/{id}/review` | Review state / note, append-only audit history |
-| `GET /api/events.csv` | CSV with formula-injection escaping |
-| `GET /api/samples` | Recent public measurements |
-| `GET /api/radio/observations` | Upload-index **metadata** only |
-| `GET /api/radio/files` | Analyzed local file status |
-| `GET /api/exoplanets` | Confirmed planet catalog reference snapshot |
-| `POST /api/poll` | Rate-limited public-source polling and local scan |
+| Integration | Approximate schedule | Limits and notes |
+|---|---|---|
+| NOAA SWPC feeds | 5–10 minutes | Recent published measurements; publication and processing can lag |
+| e-Callisto archive + upload index | ~15 minutes | At most 2 small recent FITS files per cycle; auto-cache size limits apply |
+| SatNOGS | ~10 minutes | Observation metadata; not raw RF spectra |
+| NASA/JPL | ~6 hours | Conservatively cached close-approach predictions |
+| NASA Exoplanet Archive | Daily | Bounded confirmed-planet reference snapshot |
+| Local radio inbox | ~20 seconds | File watcher on locally supplied power spectrograms |
 
-`PATCH` review states: `new`, `investigating`, `likely_interference`, `needs_followup`, `closed`. Review details and source metadata persist in SQLite across restarts. SQLite runs in WAL journal mode for concurrent reader/writer use; use `cli backup` for a consistent evidence snapshot rather than copying an open WAL database by hand. **Note:** no digital signatures or third-party calibration certificates are supplied.
+Source cooldowns may extend after failures. These intervals are implementation defaults, not provider guarantees.
 
-## Scientific provenance and data use
+## Research integrity
 
-- **e-Callisto**: [Data access and publication rules](https://www.e-callisto.org/Data/data.html), FHNW/IRSOL and contributing station operators. The project asks for credit and consultation with relevant instrument PIs/operators before publication; follow the current rules for any scientific paper.
-- **NOAA SWPC**: [Data service](https://www.spaceweather.gov/content/data-access) and near-real-time space-weather products.
-- **NASA/JPL**: [CAD API](https://ssd-api.jpl.nasa.gov/doc/cad.html), previously catalogued objects; many close-approach times are reported in TDB, not directly UTC.
-- **SatNOGS**: [Community API](https://librespacefoundation.gitlab.io/satnogs/satnogs-network/api.html); check source license and attribution.
-- **NASA Exoplanet Archive**: [TAP documentation](https://exoplanetarchive.ipac.caltech.edu/docs/TAP/usingTAP.html), catalogued planet parameters. This service may be intermittently unavailable.
-- **Breakthrough Listen**: [Public data archive](https://seti.berkeley.edu/opendata); archived recordings, not a continuously streaming public SETI receiver.
+**What a flag means:** a programmatic heuristic found a pattern worth inspection. **What a flag does not mean:** discovery of a planet, a transmitter, an extraterrestrial civilization, an independently verified solar burst, or an operational risk alert.
 
-## Validation status and limitations
+A credible investigation should check instrument configuration and calibration, remove narrowband local interference, compare ON/OFF sky pointing data where available, examine alternate observing stations with aligned frequency/time metadata, and preserve raw observations for independent review.
 
-- Tests use mocked HTTP, isolated SQLite, synthetic radio matrices and an optional genuine FITS reader test using Astropy. CI installs all standard dependencies.
-- **No internet-connected real FITS download and decoding was verified in this isolated build environment.** Any live/source failures are visible in the source-health panel.
-- Alerts are **local dashboard/API events**, not outbound email/SMS notifications. No live SETI survey feed and no autonomous peer-reviewed anomaly confirmation pipeline are provided.
-- e-Callisto solar radio time matches are based on metadata timing; not verified physical coincidences. Planet catalog polling is not a new-planet detector.
+The cross-station solar timing correlator returns **timing hints**, not physical confirmation. The NASA exoplanet catalog is reference material. A new entry in SIGNALWATCH's local database is **not** a newly discovered planet. e-Callisto telescope observations are **solar observations** and must not be presented as SETI detections.
 
-### Roadmap after v1.8
+**Validation as of v1.8.1:** Local pytest and browser-preview checks pass. The browser preview uses fixed synthetic observations. A real end-to-end e-Callisto FITS download and decode was **not** verified from this isolated build environment. The original `v1.8` test suite contains an Astropy-dependent FITS test that may skip when its optional dependency is missing. Source health in your own deployment is the source of truth.
 
-1. Run a reproducible, time-stamped end-to-end e-Callisto FITS validation on an internet-connected host; verify station metadata and frequency axes against real reference observations.
-2. Integrate an expressly authorized, continuously updating distant-target SETI radio source, if made available; require telescope metadata and independent RFI controls.
-3. Add robust instrument calibration, station baselines, coincidence significance, and validation by domain experts.
-4. Add opt-in outbound alerts, multi-operator authentication, data governance, and reproducible scientific notebooks.
+## Operations and configuration
 
-© 2026 Magnexis LLC. Unaffiliated with the data providers.
+| Environment variable | Default | Purpose |
+|---|---|---|
+| `SIGNALWATCH_BACKGROUND` | `1` | Enable periodic public polling and local-file scanning |
+| `SIGNALWATCH_POLL_SECONDS` | `300` | Background scheduler interval (minimum 60 seconds) |
+| `SIGNALWATCH_CALLISTO_DOWNLOAD` | `1` | Enable bounded FITS auto-downloading |
+| `SIGNALWATCH_CALLISTO_STATION` | `AUTO` | Select stations for published solar observations |
+| `SIGNALWATCH_DATA_DIR` | `./data` | SQLite database, watched inbox, and research backups |
+| `SIGNALWATCH_WRITE_TOKEN` | unset | Optional token for mutation endpoints (not full user authentication) |
+
+```bash
+python -m signalwatch.cli doctor
+python -m signalwatch.cli poll
+python -m signalwatch.cli scan
+python -m signalwatch.cli alerts --min-score 60
+python -m signalwatch.cli backup
+python -m pytest -q
+```
+
+**Security:** This application is designed for local operation. It does not include public-user authentication, per-user authorization, an internet-safe reverse-proxy configuration, or a hardened multi-tenant security model. Keep the default loopback binding, protect source recordings, and do not expose the API publicly without additional controls. Never commit secrets or private recordings.
+
+### Safe preview mode
+
+`http://127.0.0.1:8765/?preview=1` renders **illustrative synthetic observations** in the client only. The page is visibly labeled `SAMPLE DATA · NOT LIVE`. The preview **page** does not fetch live data, persist records, save investigator notes, or export synthetic evidence; if the server background scheduler is enabled, it continues independently. Remove `?preview=1` to see actual locally ingested data.
+
+To reproduce the screenshot assets (developer tooling only):
+
+```bash
+python -m pip install playwright
+python -m playwright install chromium
+python scripts/capture_screenshots.py
+```
+
+The screenshots are generated from the shipped HTML/CSS/JavaScript in a headless Chromium browser, with a fixed synthetic dataset and no outside requests. The included GitHub workflow can regenerate them after frontend changes.
+
+## API and operator tools
+
+| Method | Endpoint | Use |
+|---|---|---|
+| `GET` | `/api/health`, `/api/status`, `/api/telemetry` | Service health, counts, and freshness |
+| `GET` | `/api/sources` | Feed health and last errors |
+| `GET` | `/api/events`, `/api/events/changes` | Investigations and append-only additions |
+| `GET` | `/api/alerts?min_score=60` | Triage queue (excludes synthetic test records) |
+| `GET` | `/api/events/{id}` | Observation, history and cautious station matches |
+| `GET` | `/api/events/{id}/evidence.json`, `/api/events.csv` | Research evidence exports |
+| `PATCH` | `/api/events/{id}/review` | Update review state and append audit history |
+| `GET` | `/api/samples`, `/api/radio/observations`, `/api/radio/files` | Measurements and radio-file metadata |
+| `GET` | `/api/exoplanets` | Known planet reference catalog |
+| `POST` | `/api/poll` | Request an eligible polling cycle |
+
+FastAPI provides interactive documentation at `/docs`. Polling remains subject to cooldowns. Full API and configuration details are in the source modules under [`signalwatch/`](signalwatch/).
+
+## Repository layout
+
+```text
+signalwatch/
+├── signalwatch/               # Data sources, radio analytics, storage, research APIs
+├── static/                    # Responsive dashboard; browser-only preview dataset
+├── docs/screenshots/          # Real browser captures with visibly synthetic preview data
+├── scripts/                   # Reproducible screenshot capture tool
+├── tests/                     # Unit, integration and scientific-boundary regression tests
+├── examples/                  # Synthetic algorithm validation helpers
+├── .github/workflows/         # Continuous testing and screenshot generation
+├── Dockerfile
+├── docker-compose.yml
+├── requirements*.txt
+└── README.md
+```
+
+## Data sources and attribution
+
+This project is **independent of** the organizations providing public observations. Follow each dataset's applicable terms before use or publication.
+
+- [e-Callisto](https://www.e-callisto.org/Data/data.html): solar radio data from contributing observatories; follow the network's credit and publication guidance and consult relevant observers as required.
+- [NOAA Space Weather Prediction Center](https://www.swpc.noaa.gov/): published X-ray, geomagnetic, and radio-flux products.
+- [NASA JPL Small-Body Database / CAD](https://ssd-api.jpl.nasa.gov/doc/cad.html): catalogued small-body trajectory predictions.
+- [SatNOGS](https://network.satnogs.org/): ground-station observation metadata and community infrastructure.
+- [NASA Exoplanet Archive](https://exoplanetarchive.ipac.caltech.edu/): reference data about previously catalogued and confirmed planets.
+- [Breakthrough Listen](https://seti.berkeley.edu/opendata): public archived distant-target SETI recordings for investigator-controlled import.
+
+## Project status and contributions
+
+SIGNALWATCH is currently an **experimental local research prototype**. It is not a hosted 24/7 service and it does not currently offer independently verified live SETI telescope ingestion. The next milestones are: verifying real FITS metadata/decoding end-to-end, obtaining an expressly authorized continuously updating distant-target stream, and improving time/frequency calibration and independent interference rejection.
+
+For security concerns, see [SECURITY.md](SECURITY.md). For local development and issue guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+**Licensing:** A public GitHub repository does not by itself grant reuse rights. A license has not yet been selected for this project; please contact Magnexis before distributing derivative works.
+
+---
+
+<div align="center"><sub>Made by <strong>Magnexis LLC</strong> · © 2026 Magnexis LLC · Evidence before conclusions.</sub></div>

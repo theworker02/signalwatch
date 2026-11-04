@@ -1,5 +1,14 @@
 # Release history
 
+## v1.8.1 — Documentation and observatory interface (2026-11-04)
+
+- Redesigned responsive mission-control dashboard with clearer telemetry, searchable observations, and a research-first visual hierarchy.
+- Added explicit opt-in synthetic preview (`?preview=1`) that never writes demonstration records or claims real detections.
+- Added real Chromium browser screenshots for desktop, triage, investigation detail, and mobile layouts.
+- Rebuilt README with screenshot gallery, scientific limitations, setup, architecture, and reference data attribution; added contribution and security guidance.
+- Introduced reproducible preview capture and browser checks; no scientific detector claims changed in this patch.
+
+
 ## v1.8.0 — Research workflows and sustained monitoring (2026-11-04)
 
 - Implemented NASA Exoplanet Archive TAP reference snapshots, explicitly separated from scientific discovery.
