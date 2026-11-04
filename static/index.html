@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Magnexis / SIGNALWATCH</title><link rel="stylesheet" href="/static/style.css"/>
+</head><body>
+<div class="shell">
+<aside class="sidebar"><div class="mark"><div class="logo">M<span>⁄</span></div><div><strong>MAGNEXIS</strong><small>RESEARCH SYSTEMS</small></div></div>
+<div class="side-label">OBSERVATORY</div>
+<a class="nav active" href="#overview"><span class="nav-icon">◉</span> Overview</a>
+<a class="nav" href="#signals"><span class="nav-icon">≋</span> Signal activity</a>
+<a class="nav" href="#events"><span class="nav-icon">◈</span> Event log</a>
+<a class="nav" href="#sources"><span class="nav-icon">⌁</span> Data sources</a>
+<a class="nav" href="#seti"><span class="nav-icon">⌘</span> SETI laboratory</a>
+<div class="side-bottom"><span class="pulse-dot"></span><span>OPEN SCIENCE / v0.2</span></div>
+</aside>
+<main id="overview">
+<header class="topbar"><div><span class="breadcrumb">SYSTEMS <b>/</b> SIGNALWATCH</span></div><div class="clock" id="clock">--:--:-- UTC</div></header>
+<section class="hero"><div class="hero-copy"><div class="eyebrow"><span class="pulse-dot"></span> OBSERVATORY CONTROL CENTER</div>
+<h1>Watch the <em>unknown.</em></h1>
+<p>Monitor public astronomical measurements, flag noteworthy activity, and investigate unverified radio candidates.</p>
+<div class="hero-actions"><button id="poll" class="primary">↻ &nbsp; Poll public sources now</button><span id="runtime" class="runtime">Connecting to local engine…</span></div>
+</div><div class="orb" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="planet"></div><div class="orb-core"></div></div></section>
+<section class="metrics" aria-label="Observatory metrics">
+<div class="metric"><span>INGESTED EVENTS</span><strong id="m-events">—</strong><small>Historical records stored</small></div>
+<div class="metric"><span>RESEARCH FLAGS</span><strong id="m-alerts">—</strong><small>Medium / high priority</small></div>
+<div class="metric"><span>CONNECTED FEEDS</span><strong id="m-feeds">—</strong><small>Successful last fetch</small></div>
+<div class="metric"><span>RADIO FILES ANALYZED</span><strong id="m-radio">—</strong><small>Locally imported spectrograms</small></div>
+</section>
+<div class="section-head" id="signals"><div><div class="eyebrow">01 / LIVE SPACE WEATHER</div><h2>Solar X-ray flux <span class="muted">· GOES</span></h2></div><div class="chart-controls"><span class="legend-dot"></span><span>0.1–0.8 nm</span></div></div>
+<section class="card chart-panel"><div class="chart-top"><div><span class="tiny-label">LATEST DATA POINT</span><div id="flux" class="readout">—</div><span id="flux-at" class="helper">Awaiting NOAA feed</span></div><div class="chart-warning">Observed solar activity ≠ extraterrestrial signal</div></div>
+<div class="chart-wrap"><canvas id="chart" width="1100" height="290" role="img" aria-label="Solar X-ray measurements over time"></canvas><div id="chart-empty" class="chart-empty">No samples available. Poll sources once the server can reach NOAA.</div></div><div class="chart-footer"><span>GOES / NOAA SPACE WEATHER</span><span id="sample-count">0 DATA POINTS</span></div></section>
+<div class="section-head" id="events"><div><div class="eyebrow">02 / EVIDENCE RECORDS</div><h2>Observed events</h2></div><select id="filter" aria-label="Filter by source"><option value="">All sources</option><option value="NOAA GOES">Solar flares</option><option value="NOAA Kp">Geomagnetic storms</option><option value="NOAA solar radio">Solar radio signals</option><option value="NASA JPL">Asteroids</option><option value="SatNOGS">Satellite receptions</option><option value="SETI radio">Radio candidates</option></select></div>
+<div class="research-actions"><a class="export-link" href="/api/events.csv" download>↓ Export evidence CSV</a><span class="helper">Review status is saved locally to SQLite</span></div>
+<section class="card events-card"><div class="table-h"><span>EVENT / CLASSIFICATION</span><span>OBSERVED / REFERENCE</span><span>PRIORITY</span></div><div id="event-list"><div class="empty">Waiting for observation records.</div></div></section>
+<div class="section-head" id="sources"><div><div class="eyebrow">03 / INTEGRATIONS</div><h2>Source health</h2></div></div>
+<div id="source-list" class="source-grid"><div class="card empty">Source status pending.</div></div>
+<div class="section-head" id="seti"><div><div class="eyebrow">04 / RADIO LABORATORY</div><h2>SETI narrowband detector</h2></div><span class="chip">EXPERIMENTAL</span></div>
+<section class="card lab"><div><p class="lab-title">Autonomous file-watching analysis</p><p>Drop a real Breakthrough Listen <code>.fil</code> or <code>.h5</code> spectrogram (or a small <code>.npz</code> / <code>.npy</code> power matrix) into <code>data/inbox/</code>. SIGNALWATCH will inspect new files on the next monitoring cycle, flag possible drifting narrowband traces, and record them as <b>unverified candidates</b>.</p>
+<p>Real telescope recordings require the optional <code>blimpy</code> package. Local datasets are analyzed; this does <strong>not</strong> currently tap a continuous live SETI telescope feed.</p>
+<a href="https://seti.berkeley.edu/opendata" target="_blank" rel="noopener noreferrer">Browse Breakthrough Listen public files ↗</a></div>
+<div class="terminal"><div class="terminal-bar"><span class="term-dots">● ● ●</span> RADIO INGESTION</div><div><span class="term-green">$</span> python -m signalwatch.radio --demo</div><div><span class="term-gray"># Synthetic validation, never real evidence</span></div><div><span class="term-green">$</span> python -m signalwatch.radio data/inbox/your-file.fil</div><div><span class="term-gray"># Require actual recorded power spectrogram</span></div><div class="term-summary" id="radio-status">No local radio files have been processed.</div></div></section>
+<footer>MAGNEXIS SIGNALWATCH — EXPERIMENTAL RESEARCH PLATFORM <span>•</span> All flags require scientific verification. Priority scores are heuristics, not probabilities.</footer>
+</main></div>
+<script src="/static/app.js"></script>
+</body></html>
