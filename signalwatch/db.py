@@ -15,6 +15,7 @@ class Store:
         self.path = str(path)
         Path(self.path).parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as con:
+            con.execute('PRAGMA journal_mode=WAL')
             con.executescript("""
                 CREATE TABLE IF NOT EXISTS events (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,6 +33,15 @@ class Store:
                     UNIQUE(source, source_id)
                 );
                 CREATE INDEX IF NOT EXISTS ix_events_time ON events(observed_at DESC);
+                CREATE TABLE IF NOT EXISTS exoplanet_catalog (
+                    name TEXT PRIMARY KEY,
+                    hostname TEXT NOT NULL,
+                    disc_year INTEGER NOT NULL,
+                    discoverymethod TEXT NOT NULL,
+                    disc_facility TEXT NOT NULL,
+                    first_seen TEXT NOT NULL,
+                    last_seen TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS samples (
                     source TEXT NOT NULL,
                     observed_at TEXT NOT NULL,
@@ -55,6 +65,15 @@ class Store:
                     note TEXT NOT NULL DEFAULT '',
                     updated_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS investigation_history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_id INTEGER NOT NULL REFERENCES events(id),
+                    state TEXT NOT NULL,
+                    note TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS ix_investigation_history_event
+                    ON investigation_history(event_id,id);
                 CREATE TABLE IF NOT EXISTS radio_files (
                     signature TEXT PRIMARY KEY,
                     filename TEXT NOT NULL,
@@ -80,6 +99,8 @@ class Store:
     def connect(self):
         con = sqlite3.connect(self.path, timeout=12)
         con.row_factory = sqlite3.Row
+        con.execute("PRAGMA foreign_keys=ON")
+        con.execute("PRAGMA busy_timeout=12000")
         try:
             yield con
             con.commit()
@@ -157,7 +178,47 @@ class Store:
             con.execute("""INSERT INTO investigations(event_id,state,note,updated_at) VALUES (?,?,?,?)
                 ON CONFLICT(event_id) DO UPDATE SET state=excluded.state,note=excluded.note,
                     updated_at=excluded.updated_at""",(event_id,state,note,utcnow()))
+            con.execute("""INSERT INTO investigation_history(event_id,state,note,updated_at)
+                VALUES (?,?,?,?)""",(event_id,state,note,utcnow()))
         return True
+
+    def event_by_id(self, event_id):
+        with self.connect() as con:
+            row=con.execute("""SELECT e.*,COALESCE(i.state,'new') review_state,
+                COALESCE(i.note,'') review_note,i.updated_at review_updated_at
+                FROM events e LEFT JOIN investigations i ON e.id=i.event_id
+                WHERE e.id=?""",(event_id,)).fetchone()
+            return dict(row,metadata=json.loads(row['metadata'])) if row else None
+
+    def review_history(self,event_id):
+        with self.connect() as con:
+            return [dict(row) for row in con.execute("""SELECT id,event_id,state,note,updated_at
+                FROM investigation_history WHERE event_id=? ORDER BY id""",(event_id,))]
+
+    def event_changes(self,after_id=0,limit=100):
+        with self.connect() as con:
+            rows=con.execute("""SELECT e.*,COALESCE(i.state,'new') review_state FROM events e
+                LEFT JOIN investigations i ON e.id=i.event_id
+                WHERE e.id>? ORDER BY e.id ASC LIMIT ?""",(after_id,limit)).fetchall()
+            return [dict(r,metadata=json.loads(r['metadata'])) for r in rows]
+
+    def alerts(self,limit=50,min_score=60):
+        # Test/synthetic and routine observations never enter the alert queue.
+        with self.connect() as con:
+            rows=con.execute("""SELECT e.*,COALESCE(i.state,'new') review_state
+                FROM events e LEFT JOIN investigations i ON e.id=i.event_id
+                WHERE e.score>=? AND e.severity NOT IN ('test','observation')
+                  AND COALESCE(i.state,'new') NOT IN ('closed','likely_interference')
+                ORDER BY e.id DESC LIMIT ?""",(min_score,limit)).fetchall()
+            return [dict(r,metadata=json.loads(r['metadata'])) for r in rows]
+
+    def solar_candidate_window(self):
+        # Bounded query for research correlations; no cross-source ETI claim.
+        with self.connect() as con:
+            rows=con.execute("""SELECT * FROM events
+                WHERE source='e-Callisto solar radio' AND severity != 'test'
+                ORDER BY id DESC LIMIT 2000""").fetchall()
+            return [dict(r,metadata=json.loads(r['metadata'])) for r in rows]
 
     def events_count(self):
         with self.connect() as con:
@@ -193,6 +254,28 @@ class Store:
         with self.connect() as con:
             return [dict(r) for r in con.execute("""SELECT * FROM radio_observations
                 ORDER BY observed_at DESC LIMIT ?""",(limit,))]
+
+    def store_exoplanet_catalog(self, items):
+        """Record first seen in our catalog; do not equate this with planet discovery."""
+        current=utcnow()
+        with self.connect() as con:
+            initial=con.execute('SELECT COUNT(*) FROM exoplanet_catalog').fetchone()[0]==0
+            added=0
+            for item in items:
+                cur=con.execute("""INSERT OR IGNORE INTO exoplanet_catalog
+                    (name,hostname,disc_year,discoverymethod,disc_facility,first_seen,last_seen)
+                    VALUES (?,?,?,?,?,?,?)""",(item['name'],item['hostname'],item['disc_year'],
+                       item['discoverymethod'],item['disc_facility'],current,current))
+                added+=cur.rowcount
+                con.execute('UPDATE exoplanet_catalog SET last_seen=? WHERE name=?',
+                            (current,item['name']))
+            # The initial snapshot is a baseline; subsequent changes mean only new *to us*.
+            return 0 if initial else added
+
+    def get_exoplanets(self,limit=100):
+        with self.connect() as con:
+            return [dict(r) for r in con.execute("""SELECT * FROM exoplanet_catalog
+                ORDER BY disc_year DESC,name ASC LIMIT ?""",(limit,))]
 
     def get_radio_files(self):
         with self.connect() as con:

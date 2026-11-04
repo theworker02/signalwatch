@@ -106,27 +106,34 @@ async def download_recent(client, store, inbox, *, station='AUTO', now=None):
     inbox.mkdir(parents=True,exist_ok=True)
     cache_used=sum(p.stat().st_size for p in inbox.glob('*.fit') if p.is_file() and not p.is_symlink())
     if cache_used>=MAX_CACHED_BYTES:raise ValueError('Solar FITS cache full; clear processed files or expand disk')
-    page=archive_url(now)
-    response=await client.get(page,headers={'Accept':'text/html'})
-    response.raise_for_status()
-    if len(response.content)>MAX_INDEX_BYTES:raise ValueError('Archive index too large')
-    all_names=parse_archive_listing(response.text,date=now.strftime('%Y%m%d'),station=station,clock=now)
-    new=[n for n in all_names if not (inbox/n.replace('.fit.gz','.fit')).exists()]
-    # Only the newest recordings; never backfill an entire station unprompted.
-    # In AUTO mode, spread samples across observatories for geographic coverage
-    # rather than downloading both polarizations from a single instrument.
+    # Shortly after UTC midnight, late-uploaded data from the previous UTC
+    # day may still be the freshest observations. Keep a strict two-day limit.
+    days=[now]
+    if now.hour<2:days.append(now-timedelta(days=1))
+    indexed=[]
+    page_urls=[]
+    for day in days:
+        page=archive_url(day)
+        response=await client.get(page,headers={'Accept':'text/html'})
+        response.raise_for_status()
+        if len(response.content)>MAX_INDEX_BYTES:raise ValueError('Archive index too large')
+        names=parse_archive_listing(response.text,date=day.strftime('%Y%m%d'),station=station,clock=now)
+        indexed.extend((name,page) for name in names)
+        page_urls.append(page)
+    indexed.sort(reverse=True,key=lambda entry:(FILENAME.fullmatch(entry[0]).group('date'),
+                                               FILENAME.fullmatch(entry[0]).group('time')))
+    new=[(n,page) for n,page in indexed if not (inbox/n.replace('.fit.gz','.fit')).exists()]
     if station=='AUTO':
-        choices=[]; selected=set()
-        for name in new:
-            found=FILENAME.fullmatch(name)
-            site=found.group('station')
+        choices=[];selected=set()
+        for name,page in new:
+            site=FILENAME.fullmatch(name).group('station')
             if site in selected:continue
-            choices.append(name);selected.add(site)
+            choices.append((name,page));selected.add(site)
             if len(choices)>=MAX_DOWNLOADS:break
     else:
         choices=new[:MAX_DOWNLOADS]
     downloaded=[]
-    for name in choices:
+    for name,page in choices:
         file_url=page+quote(name,safe='')
         async with client.stream('GET',file_url,headers={'Accept':'application/octet-stream'}) as r:
             r.raise_for_status()
@@ -145,6 +152,6 @@ async def download_recent(client, store, inbox, *, station='AUTO', now=None):
         finally:
             if tmp_path is not None:tmp_path.unlink(missing_ok=True)
         downloaded.append(final.name)
-    return {'source':'e-Callisto raw FITS','ok':True,'seen':len(all_names),
+    return {'source':'e-Callisto raw FITS','ok':True,'seen':len(indexed),
         'added':len(downloaded),'downloaded':downloaded,'station':station,
-        'archive_url':page,'data_category':'solar_radio_not_SETI'}
+        'archive_url':page_urls[0],'archive_urls_checked':page_urls,'data_category':'solar_radio_not_SETI'}

@@ -147,6 +147,19 @@ def analyze_file(store,path,source_name='Local radio recording'):
     try:
         power,radio_metadata=load_spectrogram(path,with_metadata=True)
         candidates=scan_matrix(power)
+        # Real checksum for manageable local imports, never silently call the
+        # path/mtime dedup key a file-content hash. Very large telescope files
+        # are bounded cutouts and remain explicitly unverified in this field.
+        checksum=None
+        if stat.st_size <= 256*1024*1024:
+            dig=hashlib.sha256()
+            with path.open('rb') as fh:
+                for block in iter(lambda:fh.read(2*1024*1024),b''):
+                    dig.update(block)
+            checksum=dig.hexdigest()
+        radio_metadata['file_sha256']=checksum
+        radio_metadata['file_sha256_note']=('full_file_digest' if checksum else
+                                           'omitted_for_file_exceeding_256MB')
         synthetic=('SYNTHETIC' in path.name.upper() or source_name.upper().startswith('SYNTHETIC'))
         for candidate in candidates:
             if 'start_frequency_mhz' in radio_metadata and 'channel_width_hz' in radio_metadata:

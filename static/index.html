@@ -8,10 +8,12 @@
 <a class="nav active" href="#overview"><span class="nav-icon">◉</span> Overview</a>
 <a class="nav" href="#signals"><span class="nav-icon">≋</span> Signal activity</a>
 <a class="nav" href="#events"><span class="nav-icon">◈</span> Event log</a>
+<a class="nav" href="#triage"><span class="nav-icon">◇</span> Research triage</a>
 <a class="nav" href="#sources"><span class="nav-icon">⌁</span> Data sources</a>
 <a class="nav" href="#radio-archive"><span class="nav-icon">∿</span> Radio observatory</a>
 <a class="nav" href="#seti"><span class="nav-icon">⌘</span> SETI laboratory</a>
-<div class="side-bottom"><span class="pulse-dot"></span><span>OPEN SCIENCE / v0.3</span></div>
+<a class="nav" href="#exoplanets"><span class="nav-icon">✦</span> Planet catalog</a>
+<div class="side-bottom"><span class="pulse-dot"></span><span>OPEN SCIENCE / v1.8</span></div>
 </aside>
 <main id="overview">
 <header class="topbar"><div><span class="breadcrumb">SYSTEMS <b>/</b> SIGNALWATCH</span></div><div class="clock" id="clock">--:--:-- UTC</div></header>
@@ -21,8 +23,8 @@
 <div class="hero-actions"><button id="poll" class="primary">↻ &nbsp; Poll public sources now</button><span id="runtime" class="runtime">Connecting to local engine…</span></div>
 </div><div class="orb" aria-hidden="true"><div class="orbit orbit-a"></div><div class="orbit orbit-b"></div><div class="planet"></div><div class="orb-core"></div></div></section>
 <section class="metrics" aria-label="Observatory metrics">
-<div class="metric"><span>INGESTED EVENTS</span><strong id="m-events">—</strong><small>Historical records stored</small></div>
-<div class="metric"><span>RESEARCH FLAGS</span><strong id="m-alerts">—</strong><small>Medium / high priority</small></div>
+<div class="metric"><span>INGESTED EVENTS</span><strong id="m-events">—</strong><small>Verified-source records only</small></div>
+<div class="metric"><span>RESEARCH FLAGS</span><strong id="m-alerts">—</strong><small>Awaiting scientific review</small></div>
 <div class="metric"><span>CONNECTED FEEDS</span><strong id="m-feeds">—</strong><small>Successful last fetch</small></div>
 <div class="metric"><span>RADIO FILES ANALYZED</span><strong id="m-radio">—</strong><small>Locally imported spectrograms</small></div>
 </section>
@@ -32,15 +34,20 @@
 <div class="section-head" id="events"><div><div class="eyebrow">02 / EVIDENCE RECORDS</div><h2>Observed events</h2></div><select id="filter" aria-label="Filter by source"><option value="">All sources</option><option value="NOAA GOES">Solar flares</option><option value="NOAA Kp">Geomagnetic storms</option><option value="NOAA solar radio">Solar radio flux</option><option value="e-Callisto solar radio">Solar radio spectrogram candidates</option><option value="NASA JPL">Asteroids</option><option value="SatNOGS">Satellite receptions</option><option value="SETI radio">Radio candidates</option></select></div>
 <div class="research-actions"><a class="export-link" href="/api/events.csv" download>↓ Export evidence CSV</a><span class="helper">Review status is saved locally to SQLite</span></div>
 <section class="card events-card"><div class="table-h"><span>EVENT / CLASSIFICATION</span><span>OBSERVED / REFERENCE</span><span>PRIORITY</span></div><div id="event-list"><div class="empty">Waiting for observation records.</div></div></section>
-<div class="section-head" id="sources"><div><div class="eyebrow">03 / INTEGRATIONS</div><h2>Source health</h2></div></div>
+<div class="section-head" id="triage"><div><div class="eyebrow">03 / TRIAGE & CORRELATION</div><h2>Investigation queue</h2></div><span class="chip">UNVERIFIED SIGNALS</span></div>
+<section class="card radio-panel"><p>Prioritized candidate records from available inputs. Cross-station time matches are research hints only; they do not establish physical radio coincidences, technosignatures, or extraterrestrial origin.</p><div class="triage-list" id="alert-list"><div class="empty">No unreviewed alerts yet.</div></div></section>
+<div class="section-head" id="sources"><div><div class="eyebrow">04 / INTEGRATIONS</div><h2>Source health</h2></div></div>
 <div id="source-list" class="source-grid"><div class="card empty">Source status pending.</div></div>
-<div class="section-head" id="radio-archive"><div><div class="eyebrow">04 / RADIO SPECTRA</div><h2>e-Callisto solar observatory</h2></div><span class="chip">~15-MIN ARCHIVE</span></div>
+<div class="section-head" id="radio-archive"><div><div class="eyebrow">05 / RADIO SPECTRA</div><h2>e-Callisto solar observatory</h2></div><span class="chip">~15-MIN ARCHIVE</span></div>
 <section class="card radio-panel"><p><b>Automatic public FITS observations.</b> The service checks the published e-Callisto archive for one station, downloads up to two new short spectrogram recordings per cycle, and separately screens them for broadband transients. Station observations are solar observations, not SETI targets. Availability and publication lag vary.</p><p id="callisto-status" class="helper">Waiting for archive status.</p><div id="radio-observation-list" class="radio-observations"><div class="empty">Waiting for public radio observation metadata.</div></div><a href="https://www.e-callisto.org/Data/data.html" target="_blank" rel="noopener noreferrer">Original data / terms and attribution ↗</a></section>
-<div class="section-head" id="seti"><div><div class="eyebrow">05 / RADIO LABORATORY</div><h2>SETI narrowband detector</h2></div><span class="chip">EXPERIMENTAL</span></div>
+<div class="section-head" id="seti"><div><div class="eyebrow">06 / RADIO LABORATORY</div><h2>SETI narrowband detector</h2></div><span class="chip">EXPERIMENTAL</span></div>
 <section class="card lab"><div><p class="lab-title">Autonomous file-watching analysis</p><p>For the SETI channel, drop a real Breakthrough Listen <code>.fil</code> or <code>.h5</code> spectrogram (or a small <code>.npz</code> / <code>.npy</code> power matrix) into <code>data/inbox/</code>. SIGNALWATCH will inspect new files on the next monitoring cycle, flag possible drifting narrowband traces, and record them as <b>unverified candidates</b>.</p>
 <p>Real telescope recordings require the optional <code>blimpy</code> package. Local datasets are analyzed; this does <strong>not</strong> currently tap a continuous live SETI telescope feed. Separately, the e-Callisto solar channel now retrieves recently posted radio observations automatically (when enabled).</p>
 <a href="https://seti.berkeley.edu/opendata" target="_blank" rel="noopener noreferrer">Browse Breakthrough Listen public files ↗</a></div>
 <div class="terminal"><div class="terminal-bar"><span class="term-dots">● ● ●</span> RADIO INGESTION</div><div><span class="term-green">$</span> python -m signalwatch.radio --demo</div><div><span class="term-gray"># Synthetic validation, never real evidence</span></div><div><span class="term-green">$</span> python -m signalwatch.radio data/inbox/your-file.fil</div><div><span class="term-gray"># Require actual recorded power spectrogram</span></div><div class="term-summary" id="radio-status">No local radio files have been processed.</div></div></section>
+<div class="section-head" id="exoplanets"><div><div class="eyebrow">07 / REFERENCE CATALOG</div><h2>Known exoplanets</h2></div><span class="chip">NASA TAP · DAILY</span></div>
+<section class="card radio-panel"><p>Public NASA catalog snapshots provide context for research. A new entry in our local database is <strong>not</strong> a planet discovered by SIGNALWATCH. The NASA service can be temporarily unavailable.</p><div id="exoplanet-list" class="radio-observations"><div class="empty">Waiting for the first NASA catalog snapshot.</div></div><a href="https://exoplanetarchive.ipac.caltech.edu/" target="_blank" rel="noopener noreferrer">NASA Exoplanet Archive ↗</a></section>
+<dialog class="research-dialog" id="research-modal" aria-label="Research event details"><div class="dialog-head"><strong>SCIENTIFIC INVESTIGATION</strong><button id="close-research" aria-label="Close research details">×</button></div><div id="research-detail">Choose a candidate.</div></dialog>
 <footer>MAGNEXIS SIGNALWATCH — EXPERIMENTAL RESEARCH PLATFORM <span>•</span> All flags require scientific verification. Priority scores are heuristics, not probabilities.</footer>
 </main></div>
 <script src="/static/app.js"></script>

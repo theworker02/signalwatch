@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from math import isfinite
 import httpx
 from .ecallisto import INDEX_URL, process_ecallisto_index
+from .exoplanets import TAP_URL, TAP_QUERY, process_catalog
 
 NOAA_XRAY = 'https://services.swpc.noaa.gov/json/goes/primary/xrays-6-hour.json'
 NOAA_FLARES = 'https://services.swpc.noaa.gov/json/goes/primary/xray-flares-7-day.json'
@@ -198,6 +199,7 @@ FEEDS = [
  ('e-Callisto upload index',INDEX_URL,process_ecallisto_index,{}),
  ('NASA JPL',JPL_CAD,process_jpl,{'params':{'date-min':'now','date-max':'+30','dist-max':'5LD','limit':'300'}}),
  ('SatNOGS',SATNOGS,process_satnogs,{'params':{'page':1}}),
+ ('NASA Exoplanet Archive',TAP_URL,process_catalog,{'params':{'query':TAP_QUERY,'format':'json'}}),
 ]
 
 
